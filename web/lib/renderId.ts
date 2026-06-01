@@ -6,19 +6,17 @@ export function computeRenderId(config: StudioConfig): string {
     watermarkOpacity: Math.round(config.watermarkOpacity * 100) / 100,
     baseHue: Math.round(config.baseHue * 1000) / 1000,
     ballHue: Math.round(config.ballHue * 1000) / 1000,
+    ballColorPerBounce: config.ballColorPerBounce,
     targetTime: config.targetTime,
     ringRadius: config.ringRadius,
     borderRadius: config.borderRadius,
     initialSpeed: config.initialSpeed,
-    finalSpeed: config.finalSpeed,
     gravity: config.gravity,
-    friction: config.friction,
     restitution: config.restitution,
     eraserStart: config.eraserStart,
-    eraserEnd: config.eraserEnd,
-    jitterStart: config.jitterStart,
-    jitterEnd: config.jitterEnd,
-    seed: config.seed,
+    soundEnabled: config.soundEnabled,
+    soundPalette: config.soundPalette,
+    transparentBackground: config.transparentBackground,
   });
   let h = 0;
   for (let i = 0; i < payload.length; i++) {

@@ -7,10 +7,7 @@ import {
   captureFrame,
 } from "./renderer";
 import {
-  computeDynamicRadius,
   createDropInitialState,
-  createSeededRandom,
-  enforceMinimumMotion,
   resolveCircleCollision,
   targetDurationMs,
 } from "./physics";
@@ -57,7 +54,6 @@ export class Simulation {
   config: StudioConfig;
   /** Live ball hue (updates on bounce when ballColorPerBounce is on). */
   private activeBallHue = 0;
-  private rng: () => number = Math.random;
 
   constructor(config: StudioConfig) {
     this.config = normalizeStudioConfig(config);
@@ -113,7 +109,6 @@ export class Simulation {
     this.config = normalizeStudioConfig({
       ...this.config,
       baseHue: Math.random(),
-      seed: Math.floor(Math.random() * 1e9),
     });
     this.applyScheme();
     this.initArena();
@@ -150,7 +145,6 @@ export class Simulation {
       borderRadius,
       this.currentRadius,
       restitution,
-      this.config.initialSpeed,
     );
     this.ballX = resolved.ballX;
     this.ballY = resolved.ballY;
@@ -159,8 +153,7 @@ export class Simulation {
   }
 
   resetState(): void {
-    this.rng = createSeededRandom(this.config.seed);
-    const drop = createDropInitialState(this.config, this.rng);
+    const drop = createDropInitialState(this.config);
     this.ballX = drop.ballX;
     this.ballY = drop.ballY;
     this.prevBallX = drop.ballX;
@@ -200,15 +193,6 @@ export class Simulation {
     const duration = targetDurationMs(this.config);
     this.progress = Math.min(elapsedTime / duration, 1.0);
     this.elapsed = elapsedTime / 1000;
-    
-    // Only update continuously if growthMode is set to time
-    if (this.config.growthMode === "time") {
-      this.currentRadius = computeDynamicRadius(
-        this.progress,
-        this.initialBallRadius,
-        this.config.borderRadius,
-      );
-    }
   }
 
   private finalizeConsumption(): void {
@@ -275,20 +259,7 @@ export class Simulation {
   }
 
   getEraserRadius(): number {
-    if (this.config.growthMode === "bounce") {
-      return this.currentRadius * CINEMATIC_CONFIG.eraserBounceMultiplier;
-    }
-    // Time mode: stay thin early, widen gradually toward the end
-    const ease = Math.pow(this.progress, 2);
-    return this.config.eraserStart + (this.config.eraserEnd - this.config.eraserStart) * ease;
-  }
-
-  private getBounceJitter(): number {
-    const t = Math.pow(this.progress, 1.2);
-    return (
-      this.config.jitterStart +
-      (this.config.jitterEnd - this.config.jitterStart) * t
-    );
+    return this.config.eraserStart;
   }
 
   tick(nowMs: number, dtMs: number): void {
@@ -305,122 +276,61 @@ export class Simulation {
       return;
     }
 
-    const { borderRadius, gravity, friction, restitution } = this.config;
-    const maxAllowedRadius = borderRadius - 5;
+    const { borderRadius, gravity, restitution } = this.config;
+    const ballR = this.currentRadius;
 
-    // Smooth time-based speedup (scales current velocity vector smoothly)
-    if (this.config.speedupMode === "time") {
-      const targetSpeed = this.config.initialSpeed + (this.config.finalSpeed - this.config.initialSpeed) * Math.pow(this.progress, 1.5);
-      const currentSpeed = Math.sqrt(this.velX ** 2 + this.velY ** 2);
-      if (currentSpeed > 0.1) {
-        this.velX = (this.velX / currentSpeed) * targetSpeed;
-        this.velY = (this.velY / currentSpeed) * targetSpeed;
-      }
-    }
-
-    // Gravity every frame, before position — never conditional
+    // 1. Gravity
     this.velY += gravity;
-    this.velX *= friction;
-    this.velY *= friction;
 
-    const speed = Math.sqrt(this.velX ** 2 + this.velY ** 2);
-    this.displaySpeed = speed;
+    // 2. Move
+    const prevX = this.ballX;
+    const prevY = this.ballY;
+    this.ballX += this.velX;
+    this.ballY += this.velY;
 
-    const steps = Math.max(1, Math.floor(Math.max(speed, 1) / 3));
-    let segFromX = this.prevBallX;
-    let segFromY = this.prevBallY;
+    // 3. Circle boundary bounce
+    const resolved = resolveCircleCollision(
+      this.ballX,
+      this.ballY,
+      this.velX,
+      this.velY,
+      borderRadius,
+      ballR,
+      restitution,
+    );
+    this.ballX = resolved.ballX;
+    this.ballY = resolved.ballY;
+    this.velX = resolved.velX;
+    this.velY = resolved.velY;
+    this.displaySpeed = Math.hypot(this.velX, this.velY);
 
-    for (let s = 0; s < steps; s++) {
-      const ballR = this.currentRadius;
-      const nextX = this.ballX + this.velX / steps;
-      const nextY = this.ballY + this.velY / steps;
+    const eraserR = this.getEraserRadius();
+    this.scene.drawEraserTrail(
+      prevX,
+      prevY,
+      this.ballX,
+      this.ballY,
+      eraserR,
+      this.trailColor,
+      this.config.transparentBackground,
+    );
 
-      const resolved = resolveCircleCollision(
-        nextX,
-        nextY,
-        this.velX,
-        this.velY,
+    if (resolved.collided) {
+      this.scene.drawWallGapFill(
+        this.ballX,
+        this.ballY,
         borderRadius,
         ballR,
-        restitution,
-        this.config.initialSpeed,
-        { rng: this.rng, jitter: this.getBounceJitter() },
-      );
-
-      const eraserR = this.getEraserRadius();
-
-      this.scene.drawEraserTrail(
-        segFromX,
-        segFromY,
-        resolved.ballX,
-        resolved.ballY,
         eraserR,
         this.trailColor,
         this.config.transparentBackground,
       );
-
-      if (resolved.collided) {
-        this.scene.drawWallGapFill(
-          resolved.ballX,
-          resolved.ballY,
-          borderRadius,
-          ballR,
-          eraserR,
-          this.trailColor,
-          this.config.transparentBackground,
-        );
-      }
-
-      segFromX = resolved.ballX;
-      segFromY = resolved.ballY;
-
-      this.ballX = resolved.ballX;
-      this.ballY = resolved.ballY;
-      this.velX = resolved.velX;
-      this.velY = resolved.velY;
-
-      if (resolved.collided) {
-        this.bounceCount += 1;
-        this.shiftBallColorOnBounce();
-
-        // Apply bounce-based speedup
-        if (this.config.speedupMode === "bounce") {
-          const preSpeed = Math.sqrt(this.velX ** 2 + this.velY ** 2);
-          const postSpeed = preSpeed * this.config.speedMultiplierPerBounce;
-          if (preSpeed > 1e-6) {
-            this.velX = (this.velX / preSpeed) * postSpeed;
-            this.velY = (this.velY / preSpeed) * postSpeed;
-          }
-        }
-
-        // Apply bounce-based growth
-        if (this.config.growthMode === "bounce") {
-          this.currentRadius = Math.min(
-            maxAllowedRadius,
-            this.currentRadius + this.config.radiusIncrementPerBounce
-          );
-        }
-
-        // Trigger satisfying ASMR bounce chime callback
-        if (this.onBounceCallback) {
-          const finalSpeed = Math.sqrt(this.velX ** 2 + this.velY ** 2);
-          this.onBounceCallback(this.bounceCount, finalSpeed);
-        }
+      this.bounceCount += 1;
+      this.shiftBallColorOnBounce();
+      if (this.onBounceCallback) {
+        this.onBounceCallback(this.bounceCount, this.displaySpeed);
       }
     }
-
-    const currentBallR = this.currentRadius;
-    const motion = enforceMinimumMotion(
-      this.velX,
-      this.velY,
-      this.ballX,
-      this.ballY,
-      borderRadius,
-      currentBallR,
-      this.config.initialSpeed,
-    );
-    this.velX = motion.velX;
-    this.velY = motion.velY;
 
     this.prevBallX = this.ballX;
     this.prevBallY = this.ballY;

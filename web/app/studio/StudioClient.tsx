@@ -67,7 +67,6 @@ export function StudioClient() {
         ...c,
         baseHue,
         ballHue: (baseHue + 0.5) % 1,
-        seed: Math.floor(Math.random() * 1e9),
       }),
     );
   };
