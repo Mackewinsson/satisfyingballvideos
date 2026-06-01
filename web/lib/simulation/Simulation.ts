@@ -1,3 +1,4 @@
+import { CINEMATIC_CONFIG } from "./constants";
 import { generateColorScheme, rgbCss } from "./colors";
 import {
   SceneBuffer,
@@ -8,6 +9,7 @@ import {
 import {
   computeDynamicRadius,
   createDropInitialState,
+  createSeededRandom,
   enforceMinimumMotion,
   resolveCircleCollision,
   targetDurationMs,
@@ -53,12 +55,16 @@ export class Simulation {
 
   recording = false;
   config: StudioConfig;
+  /** Live ball hue (updates on bounce when ballColorPerBounce is on). */
+  private activeBallHue = 0;
+  private rng: () => number = Math.random;
 
   constructor(config: StudioConfig) {
     this.config = normalizeStudioConfig(config);
+    this.activeBallHue = this.config.ballHue;
     this.scheme = generateColorScheme(
       this.config.baseHue,
-      this.config.ballHue,
+      this.activeBallHue,
     );
     this.trailColor = rgbCss(this.scheme.bg);
     this.scene = new SceneBuffer();
@@ -83,8 +89,15 @@ export class Simulation {
     const schemeChanged =
       this.config.baseHue !== prev.baseHue ||
       this.config.ballHue !== prev.ballHue ||
+      this.config.ballColorPerBounce !== prev.ballColorPerBounce ||
       this.config.borderRadius !== prev.borderRadius ||
       this.config.transparentBackground !== prev.transparentBackground;
+    if (
+      this.config.ballHue !== prev.ballHue ||
+      this.config.ballColorPerBounce !== prev.ballColorPerBounce
+    ) {
+      this.activeBallHue = this.config.ballHue;
+    }
     if (schemeChanged) {
       this.applyScheme();
       this.initArena();
@@ -111,9 +124,16 @@ export class Simulation {
   applyScheme(): void {
     this.scheme = generateColorScheme(
       this.config.baseHue,
-      this.config.ballHue,
+      this.activeBallHue,
     );
     this.trailColor = rgbCss(this.scheme.bg);
+  }
+
+  private shiftBallColorOnBounce(): void {
+    if (!this.config.ballColorPerBounce) return;
+    this.activeBallHue =
+      (this.activeBallHue + CINEMATIC_CONFIG.ballHueShiftPerBounce) % 1;
+    this.scheme = generateColorScheme(this.config.baseHue, this.activeBallHue);
   }
 
   private syncPrevBall(): void {
@@ -140,7 +160,8 @@ export class Simulation {
   }
 
   resetState(): void {
-    const drop = createDropInitialState(this.config);
+    this.rng = createSeededRandom(this.config.seed);
+    const drop = createDropInitialState(this.config, this.rng);
     this.ballX = drop.ballX;
     this.ballY = drop.ballY;
     this.prevBallX = drop.ballX;
@@ -152,6 +173,8 @@ export class Simulation {
     this.clearPct = 0;
     this.clearTimer = 0;
     this.isComplete = false;
+    this.activeBallHue = this.config.ballHue;
+    this.applyScheme();
     this.initialBallRadius = this.config.ringRadius;
     this.currentRadius = this.initialBallRadius;
     this.beginAnimationClock();
@@ -254,13 +277,19 @@ export class Simulation {
 
   getEraserRadius(): number {
     if (this.config.growthMode === "bounce") {
-      // In bounce growth mode, eraser radius is 2x the ball's radius, leaving a balanced, moderate satisfying trail
-      return this.currentRadius * 2.0;
-    } else {
-      // In time-based mode, smoothly interpolate between configured start/end limits
-      const ease = Math.pow(this.progress, 1.5);
-      return this.config.eraserStart + (this.config.eraserEnd - this.config.eraserStart) * ease;
+      return this.currentRadius * CINEMATIC_CONFIG.eraserBounceMultiplier;
     }
+    // Time mode: stay thin early, widen gradually toward the end
+    const ease = Math.pow(this.progress, 2);
+    return this.config.eraserStart + (this.config.eraserEnd - this.config.eraserStart) * ease;
+  }
+
+  private getBounceJitter(): number {
+    const t = Math.pow(this.progress, 1.2);
+    return (
+      this.config.jitterStart +
+      (this.config.jitterEnd - this.config.jitterStart) * t
+    );
   }
 
   tick(nowMs: number, dtMs: number): void {
@@ -271,23 +300,14 @@ export class Simulation {
       return;
     }
 
-    // Check early completion conditions (e.g. ball filling arena or fully cleared)
-    const maxAllowedRadius = this.config.borderRadius - 5;
-    if (this.config.growthMode === "bounce" && this.currentRadius >= maxAllowedRadius) {
-      this.finalizeConsumption();
-      return;
-    }
-    if (this.clearPct >= 0.99) {
-      this.finalizeConsumption();
-      return;
-    }
-
+    // Always run the full targetTime — do not end early when cleared or at max ball size.
     if (this.progress >= 1.0) {
       this.finalizeConsumption();
       return;
     }
 
     const { borderRadius, gravity, friction, restitution } = this.config;
+    const maxAllowedRadius = borderRadius - 5;
 
     // Smooth time-based speedup (scales current velocity vector smoothly)
     if (this.config.speedupMode === "time") {
@@ -316,38 +336,53 @@ export class Simulation {
       const nextX = this.ballX + this.velX / steps;
       const nextY = this.ballY + this.velY / steps;
 
-      this.scene.drawEraserTrail(
-        segFromX,
-        segFromY,
+      const resolved = resolveCircleCollision(
         nextX,
         nextY,
-        this.getEraserRadius(),
-        this.trailColor,
-        this.config.transparentBackground,
-      );
-      segFromX = nextX;
-      segFromY = nextY;
-
-      this.ballX = nextX;
-      this.ballY = nextY;
-
-      const resolved = resolveCircleCollision(
-        this.ballX,
-        this.ballY,
         this.velX,
         this.velY,
         borderRadius,
         ballR,
         restitution,
         this.config.initialSpeed,
+        { rng: this.rng, jitter: this.getBounceJitter() },
       );
+
+      const eraserR = this.getEraserRadius();
+
+      this.scene.drawEraserTrail(
+        segFromX,
+        segFromY,
+        resolved.ballX,
+        resolved.ballY,
+        eraserR,
+        this.trailColor,
+        this.config.transparentBackground,
+      );
+
+      if (resolved.collided) {
+        this.scene.drawWallGapFill(
+          resolved.ballX,
+          resolved.ballY,
+          borderRadius,
+          ballR,
+          eraserR,
+          this.trailColor,
+          this.config.transparentBackground,
+        );
+      }
+
+      segFromX = resolved.ballX;
+      segFromY = resolved.ballY;
+
       this.ballX = resolved.ballX;
       this.ballY = resolved.ballY;
       this.velX = resolved.velX;
       this.velY = resolved.velY;
-      
+
       if (resolved.collided) {
         this.bounceCount += 1;
+        this.shiftBallColorOnBounce();
 
         // Apply bounce-based speedup
         if (this.config.speedupMode === "bounce") {

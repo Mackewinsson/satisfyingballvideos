@@ -7,7 +7,7 @@ import { BouncingRingCanvas } from "@/components/BouncingRingCanvas";
 import { CustomizePanel } from "@/components/CustomizePanel";
 import { PayModal } from "@/components/PayModal";
 import { downloadGif, type GifExportResult } from "@/lib/gifExport";
-import { downloadBlob, isWebMTransparentSupported } from "@/lib/videoExport";
+import { downloadBlob, isMp4ExportSupported, isWebMTransparentSupported } from "@/lib/videoExport";
 import { generateColorScheme } from "@/lib/simulation/colors";
 import { computeRenderId } from "@/lib/renderId";
 import { isUnlocked, requestUnlock } from "@/lib/paywall";
@@ -22,23 +22,26 @@ export function StudioClient() {
   const searchParams = useSearchParams();
   const [config, setConfig] = useState<StudioConfig>(() => defaultStudioConfig());
   const [generating, setGenerating] = useState(false);
-  const [exportType, setExportType] = useState<"gif" | "zip" | "webm">("gif");
+  const [exportType, setExportType] = useState<"gif" | "zip" | "webm" | "mp4">("mp4");
   
   // Export states
   const [gifExport, setGifExport] = useState<GifExportResult | null>(null);
   const [zipExport, setZipExport] = useState<Blob | null>(null);
   const [webmExport, setWebMExport] = useState<Blob | null>(null);
+  const [mp4Export, setMp4Export] = useState<Blob | null>(null);
   
   const [payOpen, setPayOpen] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [webmSupported, setWebmSupported] = useState(false);
+  const [mp4Supported, setMp4Supported] = useState(false);
 
   const renderId = useMemo(() => computeRenderId(config), [config]);
 
   useEffect(() => {
     setWebmSupported(isWebMTransparentSupported());
+    void isMp4ExportSupported().then(setMp4Supported);
   }, []);
 
   useEffect(() => {
@@ -85,6 +88,7 @@ export function StudioClient() {
     setGifExport(null);
     setZipExport(null);
     setWebMExport(null);
+    setMp4Export(null);
     
     setStatus(`Recording ${config.targetTime}s…`);
     setGenerating(true);
@@ -105,6 +109,11 @@ export function StudioClient() {
     setStatus(`Transparent WebM video ready (${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB).`);
   }, []);
 
+  const handleMp4Complete = useCallback((blob: Blob) => {
+    setMp4Export(blob);
+    setStatus(`60 fps MP4 ready (${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB). Drop into Final Cut Pro.`);
+  }, []);
+
   const runDownload = useCallback(() => {
     const scheme = generateColorScheme(config.baseHue, config.ballHue);
     try {
@@ -117,17 +126,21 @@ export function StudioClient() {
       } else if (exportType === "webm" && webmExport) {
         downloadBlob(webmExport, "webm", scheme.ball);
         setStatus("Transparent WebM downloaded.");
+      } else if (exportType === "mp4" && mp4Export) {
+        downloadBlob(mp4Export, "mp4", scheme.ball);
+        setStatus("MP4 downloaded.");
       }
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Export failed.");
     }
-  }, [exportType, gifExport, zipExport, webmExport, config.baseHue, config.ballHue]);
+  }, [exportType, gifExport, zipExport, webmExport, mp4Export, config.baseHue, config.ballHue]);
 
   const handleDownloadClick = () => {
     const hasActiveExport = 
       (exportType === "gif" && gifExport?.bytes.length) ||
       (exportType === "zip" && zipExport) ||
-      (exportType === "webm" && webmExport);
+      (exportType === "webm" && webmExport) ||
+      (exportType === "mp4" && mp4Export);
 
     if (!hasActiveExport) {
       setStatus("Generate an animation first.");
@@ -155,8 +168,9 @@ export function StudioClient() {
     if (exportType === "gif") return Boolean(gifExport?.bytes.length);
     if (exportType === "zip") return Boolean(zipExport);
     if (exportType === "webm") return Boolean(webmExport);
+    if (exportType === "mp4") return Boolean(mp4Export);
     return false;
-  }, [exportType, gifExport, zipExport, webmExport]);
+  }, [exportType, gifExport, zipExport, webmExport, mp4Export]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -178,6 +192,7 @@ export function StudioClient() {
             setGifExport(null);
             setZipExport(null);
             setWebMExport(null);
+            setMp4Export(null);
             setConfig(normalizeStudioConfig(c));
           }}
           onRandomize={handleRandomize}
@@ -194,13 +209,26 @@ export function StudioClient() {
             onRecordingComplete={handleRecordingComplete}
             onZipComplete={handleZipComplete}
             onWebMComplete={handleWebMComplete}
+            onMp4Complete={handleMp4Complete}
             onProgress={setStatus}
           />
 
           {/* Premium Format Tabs */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
             <h3 className="text-sm font-semibold text-zinc-300">Export Options</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button
+                type="button"
+                disabled={generating}
+                onClick={() => setExportType("mp4")}
+                className={`rounded-lg px-3 py-2.5 text-xs font-semibold border transition-all ${
+                  exportType === "mp4"
+                    ? "bg-violet-600 border-violet-500 text-white shadow-md shadow-violet-950/20"
+                    : "border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+                }`}
+              >
+                🎞️ MP4 (60 fps)
+              </button>
               <button
                 type="button"
                 disabled={generating}
@@ -240,6 +268,26 @@ export function StudioClient() {
             </div>
 
             {/* Educational / Tooltip Warnings for Video Editors */}
+            {exportType === "mp4" && (
+              <div className="text-xs space-y-1.5 p-3 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-400">
+                <p className="font-semibold text-zinc-300">🎞️ One-file 60 fps for Final Cut Pro</p>
+                {!mp4Supported ? (
+                  <p className="text-amber-500 font-medium">
+                    ⚠️ MP4 encoding is not supported in this browser. Use Chrome or Edge, or export a PNG Sequence (ZIP).
+                  </p>
+                ) : (
+                  <p>
+                    Encodes every frame at 60 fps into a single H.264 MP4 with bounce audio — no ffmpeg or manual import needed. Drag straight into Final Cut Pro.
+                  </p>
+                )}
+                {config.transparentBackground && (
+                  <p className="text-amber-400 font-medium pt-1">
+                    ⚠️ MP4 does not support transparency; transparent areas are composited on black.
+                  </p>
+                )}
+              </div>
+            )}
+
             {exportType === "zip" && (
               <div className="text-xs space-y-1.5 p-3 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-400">
                 <p className="font-semibold text-zinc-300">💡 Industry Standard for Final Cut Pro</p>
@@ -287,7 +335,7 @@ export function StudioClient() {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              disabled={generating || (exportType === "webm" && !webmSupported)}
+              disabled={generating || (exportType === "webm" && !webmSupported) || (exportType === "mp4" && !mp4Supported)}
               onClick={handleGenerate}
               className="rounded-lg bg-violet-600 px-6 py-3 font-semibold text-white hover:bg-violet-500 disabled:opacity-50 transition-colors"
             >
@@ -301,7 +349,7 @@ export function StudioClient() {
               onClick={handleDownloadClick}
               className="rounded-lg border border-zinc-700 bg-zinc-900/40 px-6 py-3 font-semibold hover:bg-zinc-800 disabled:opacity-40 transition-colors"
             >
-              Download {exportType === "zip" ? "PNG Sequence (ZIP)" : exportType.toUpperCase()}
+              Download {exportType === "zip" ? "PNG Sequence (ZIP)" : exportType === "mp4" ? "MP4" : exportType.toUpperCase()}
             </button>
           </div>
 

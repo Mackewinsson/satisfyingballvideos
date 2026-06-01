@@ -23,11 +23,21 @@ export const CINEMATIC_CONFIG = {
   minSpeed: 14,
   bottomVyThreshold: 2.5,
   bottomYKick: 6,
-  /** Eraser brush scales with ball size */
-  eraserStartFactor: 4,
-  eraserEndFactor: 7.5,
+  /** Horizontal scatter when anti-stuck bottom kick fires (with bounce rng). */
+  bottomXKick: 5,
+  /** Eraser brush radius scales with ball size (line width = radius × 2 in renderer). */
+  eraserStartFactor: 1.2,
+  eraserEndFactor: 2.2,
+  /** Bounce-growth mode: eraser radius = ball radius × this (keep trail narrow). */
+  eraserBounceMultiplier: 0.75,
+  /** Hue shift applied to the ball on each bounce when ballColorPerBounce is enabled. */
+  ballHueShiftPerBounce: 0.618,
   /** Full consume duration (seconds); ms = targetTime * 1000 */
   targetTime: 60,
+  /** Studio export duration slider bounds (seconds). */
+  durationMinSec: 10,
+  durationMaxSec: 300,
+  durationStepSec: 5,
   /** Exponent for radius growth curve (stay small, then swallow at end) */
   growthEasePower: 4,
   fps: 60,
@@ -46,6 +56,9 @@ export function scaleFromCanvas(
 
 export const FPS = CINEMATIC_CONFIG.fps;
 export const FRAME_SKIP = CINEMATIC_CONFIG.frameSkip;
+export const DURATION_MIN_SEC = CINEMATIC_CONFIG.durationMinSec;
+export const DURATION_MAX_SEC = CINEMATIC_CONFIG.durationMaxSec;
+export const DURATION_STEP_SEC = CINEMATIC_CONFIG.durationStepSec;
 export const MIN_SPEED = CINEMATIC_CONFIG.minSpeed;
 export const BOTTOM_VY_THRESHOLD = CINEMATIC_CONFIG.bottomVyThreshold;
 export const BOTTOM_Y_KICK = CINEMATIC_CONFIG.bottomYKick;

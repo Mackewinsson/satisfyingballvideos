@@ -3,8 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Simulation, FRAME_SKIP, WIDTH, HEIGHT } from "@/lib/simulation/Simulation";
 import { GifStreamEncoder, type GifExportResult } from "@/lib/gifExport";
+import {
+  type BounceEvent,
+  renderBounceSoundtrack,
+  scheduleBounceNote,
+} from "@/lib/bounceAudio";
 import type { StudioConfig } from "@/lib/simulation/types";
-import { PngSequenceExporter, WebMAlphaRecorder, AudioWavRecorder } from "@/lib/videoExport";
+import {
+  audioBufferToWav,
+  createRecordingDestination,
+  Mp4Exporter,
+  MP4_FPS,
+  PngSequenceExporter,
+  WebMAlphaRecorder,
+  AudioWavRecorder,
+} from "@/lib/videoExport";
 
 let audioCtx: AudioContext | null = null;
 let activeRecordingNode: AudioNode | null = null;
@@ -35,137 +48,26 @@ function playBounceNote(config: StudioConfig, bounceCount: number, speed: number
   if (!config.soundEnabled) return;
   const ctx = getAudioContext();
   if (!ctx) return;
-  
+
   if (ctx.state === "suspended") {
     void ctx.resume();
   }
 
-  // Create oscillator, envelope, and lowpass filter
-  const osc = ctx.createOscillator();
-  const gainNode = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-
-  osc.connect(filter);
-  filter.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  scheduleBounceNote(ctx, ctx.destination, config, bounceCount, speed, ctx.currentTime);
   if (activeRecordingNode) {
-    gainNode.connect(activeRecordingNode);
+    scheduleBounceNote(ctx, activeRecordingNode, config, bounceCount, speed, ctx.currentTime);
   }
-
-  let frequency = 440;
-  
-  if (config.soundPalette === "pentatonic") {
-    // Satisfying pentatonic climb
-    const pentatonicScale = [
-      130.81, 146.83, 164.81, 196.00, 220.00, // Octave 3 (C3 - A3)
-      261.63, 293.66, 329.63, 392.00, 440.00, // Octave 4 (C4 - A4)
-      523.25, 587.33, 659.25, 783.99, 880.00, // Octave 5 (C5 - A5)
-      1046.50, 1174.66, 1318.51, 1567.98, 1760.00 // Octave 6 (C6 - A6)
-    ];
-    const noteIndex = (bounceCount - 1) % pentatonicScale.length;
-    frequency = pentatonicScale[noteIndex];
-  } else if (config.soundPalette === "escalating") {
-    // Continuously scaling frequency based on speed
-    const baseFreq = 130.81; // C3
-    frequency = baseFreq * (1 + (speed - 14) / 25);
-    frequency = Math.min(2500, Math.max(130.81, frequency));
-  } else if (config.soundPalette === "chime") {
-    // Minor triad arpeggio arpeggiating upward
-    const root = 220.00; // A3
-    const ratios = [1, 1.2, 1.5, 2, 2.4, 3, 4];
-    const index = (bounceCount - 1) % ratios.length;
-    frequency = root * ratios[index];
-  } else if (config.soundPalette === "marimba") {
-    // Warm woody pentatonic
-    const scale = [196.00, 220.00, 246.94, 293.66, 329.63, 392.00, 440.00, 493.88, 587.33, 659.25, 783.99]; // G3 - G5
-    const index = (bounceCount - 1) % scale.length;
-    frequency = scale[index];
-  }
-
-  const now = ctx.currentTime;
-
-  // Sound synthesis styling per palette
-  if (config.soundPalette === "marimba") {
-    osc.type = "sine";
-    // Brief wood overtone (3rd harmonic)
-    const overtone = ctx.createOscillator();
-    const overtoneGain = ctx.createGain();
-    overtone.type = "sine";
-    overtone.frequency.setValueAtTime(frequency * 3.0, now);
-    overtone.connect(overtoneGain);
-    overtoneGain.connect(filter);
-    
-    overtoneGain.gain.setValueAtTime(0.08, now);
-    overtoneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-    
-    overtone.start(now);
-    overtone.stop(now + 0.15);
-  } else if (config.soundPalette === "chime") {
-    osc.type = "triangle";
-    // Bright metallic overtone
-    const metal = ctx.createOscillator();
-    const metalGain = ctx.createGain();
-    metal.type = "sine";
-    metal.frequency.setValueAtTime(frequency * 4.2, now);
-    metal.connect(metalGain);
-    metalGain.connect(filter);
-    
-    metalGain.gain.setValueAtTime(0.12, now);
-    metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-    
-    metal.start(now);
-    metal.stop(now + 0.5);
-  } else {
-    // Standard pluck (tri + sine mix)
-    osc.type = "sine";
-    const bite = ctx.createOscillator();
-    const biteGain = ctx.createGain();
-    bite.type = "triangle";
-    bite.frequency.setValueAtTime(frequency, now);
-    bite.connect(biteGain);
-    biteGain.connect(filter);
-    
-    biteGain.gain.setValueAtTime(0.05, now);
-    biteGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-    bite.start(now);
-    bite.stop(now + 0.08);
-  }
-
-  osc.frequency.setValueAtTime(frequency, now);
-
-  // Lowpass pluck filter sweep
-  filter.type = "lowpass";
-  if (config.soundPalette === "chime") {
-    filter.Q.setValueAtTime(4, now);
-    filter.frequency.setValueAtTime(frequency * 5, now);
-    filter.frequency.exponentialRampToValueAtTime(frequency * 1.5, now + 0.4);
-  } else if (config.soundPalette === "marimba") {
-    filter.Q.setValueAtTime(1, now);
-    filter.frequency.setValueAtTime(frequency * 2.5, now);
-    filter.frequency.exponentialRampToValueAtTime(frequency * 1.0, now + 0.1);
-  } else {
-    filter.Q.setValueAtTime(2, now);
-    filter.frequency.setValueAtTime(frequency * 4, now);
-    filter.frequency.exponentialRampToValueAtTime(frequency * 1.2, now + 0.25);
-  }
-
-  // Pluck amplitude envelope
-  const decayTime = config.soundPalette === "marimba" ? 0.2 : (config.soundPalette === "chime" ? 0.6 : 0.45);
-  gainNode.gain.setValueAtTime(0.35, now);
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, now + decayTime);
-
-  osc.start(now);
-  osc.stop(now + decayTime + 0.05);
 }
 
 type Props = {
   config: StudioConfig;
   generating: boolean;
-  exportType: "gif" | "zip" | "webm";
+  exportType: "gif" | "zip" | "webm" | "mp4";
   onGeneratingChange: (v: boolean) => void;
   onRecordingComplete: (result: GifExportResult) => void;
   onZipComplete: (blob: Blob) => void;
   onWebMComplete: (blob: Blob) => void;
+  onMp4Complete: (blob: Blob) => void;
   onProgress?: (progressText: string) => void;
 };
 
@@ -177,6 +79,7 @@ export function BouncingRingCanvas({
   onRecordingComplete,
   onZipComplete,
   onWebMComplete,
+  onMp4Complete,
   onProgress,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -185,6 +88,9 @@ export function BouncingRingCanvas({
   const gifEncoderRef = useRef<GifStreamEncoder | null>(null);
   const pngExporterRef = useRef<PngSequenceExporter | null>(null);
   const webmRecorderRef = useRef<WebMAlphaRecorder | null>(null);
+  const mp4ExporterRef = useRef<Mp4Exporter | null>(null);
+  const mp4ExportActiveRef = useRef(false);
+  const bounceEventsRef = useRef<BounceEvent[]>([]);
   const audioRecorderRef = useRef<AudioWavRecorder | null>(null);
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
@@ -267,7 +173,14 @@ export function BouncingRingCanvas({
         }
       }
     },
-    [onGeneratingChange, onRecordingComplete, onZipComplete, onWebMComplete, onProgress, exportType],
+    [
+      onGeneratingChange,
+      onRecordingComplete,
+      onZipComplete,
+      onWebMComplete,
+      onProgress,
+      exportType,
+    ],
   );
 
   useEffect(() => {
@@ -310,14 +223,15 @@ export function BouncingRingCanvas({
 
       const wasComplete = sim.isComplete;
 
-      if ((previewing || generating) && sim.shouldAnimate()) {
+      if ((previewing || generating) && sim.shouldAnimate() && !mp4ExportActiveRef.current) {
         sim.tick(time, dt);
       }
 
       sim.draw(ctx);
 
-      if (generating && sim.recording) {
+      if (generating && sim.recording && exportType !== "mp4") {
         frameCounterRef.current += 1;
+
         if (frameCounterRef.current % FRAME_SKIP === 0) {
           if (exportType === "gif") {
             gifEncoderRef.current?.addFrame(sim.captureTransparentFrame());
@@ -362,7 +276,7 @@ export function BouncingRingCanvas({
   }, [loop]);
 
   useEffect(() => {
-    if (!generating) return;
+    if (!generating || exportType === "mp4") return;
     const sim = simRef.current;
     const canvas = canvasRef.current;
     if (!sim || !canvas) return;
@@ -371,30 +285,182 @@ export function BouncingRingCanvas({
     lastTimeRef.current = 0;
 
     const audioCtx = getAudioContext();
+    if (audioCtx) resumeAudioCtx();
 
-    if (exportType === "gif") {
-      gifEncoderRef.current = new GifStreamEncoder();
-    } else if (exportType === "zip") {
-      pngExporterRef.current = new PngSequenceExporter();
-      if (audioCtx) {
-        audioRecorderRef.current = new AudioWavRecorder(audioCtx);
-        audioRecorderRef.current.start();
-        setActiveRecordingNode(audioRecorderRef.current.getProcessorNode());
+    const startRecording = async () => {
+      if (exportType === "gif") {
+        gifEncoderRef.current = new GifStreamEncoder();
+      } else if (exportType === "zip") {
+        pngExporterRef.current = new PngSequenceExporter();
+        if (audioCtx) {
+          const dest = createRecordingDestination(audioCtx);
+          audioRecorderRef.current = new AudioWavRecorder(audioCtx);
+          audioRecorderRef.current.startFromDestination(dest);
+          setActiveRecordingNode(dest);
+        }
+      } else if (exportType === "webm") {
+        let audioStream: MediaStream | undefined;
+        if (audioCtx) {
+          const dest = createRecordingDestination(audioCtx);
+          setActiveRecordingNode(dest);
+          audioStream = dest.stream;
+        }
+        webmRecorderRef.current = new WebMAlphaRecorder(canvas, 30, audioStream);
+        webmRecorderRef.current.start();
       }
-    } else if (exportType === "webm") {
+
+      sim.startRecording();
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    void startRecording();
+  }, [generating, loop, exportType, config.transparentBackground, config.soundEnabled, onGeneratingChange, onProgress]);
+
+  useEffect(() => {
+    if (!generating || exportType !== "mp4") return;
+
+    const sim = simRef.current;
+    const canvas = canvasRef.current;
+    if (!sim || !canvas) return;
+
+    let cancelled = false;
+    mp4ExportActiveRef.current = true;
+    bounceEventsRef.current = [];
+    frameCounterRef.current = 0;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const wantsAudio = config.soundEnabled;
+    const stepMs = 1000 / MP4_FPS;
+    const durationMs = config.targetTime * 1000;
+    const maxFrames = Math.ceil(config.targetTime * MP4_FPS);
+
+    const runMp4Export = async () => {
+      let audioDest: MediaStreamAudioDestinationNode | null = null;
       let audioStream: MediaStream | undefined;
-      if (audioCtx) {
-        const dest = audioCtx.createMediaStreamDestination();
-        setActiveRecordingNode(dest);
-        audioStream = dest.stream;
-      }
-      webmRecorderRef.current = new WebMAlphaRecorder(canvas, 30, audioStream);
-      webmRecorderRef.current.start();
-    }
 
-    sim.startRecording();
-    rafRef.current = requestAnimationFrame(loop);
-  }, [generating, loop, exportType]);
+      if (wantsAudio) {
+        const audioCtx = getAudioContext();
+        if (audioCtx) {
+          resumeAudioCtx();
+          audioDest = createRecordingDestination(audioCtx);
+          audioStream = audioDest.stream;
+        }
+      }
+
+      try {
+        mp4ExporterRef.current = await Mp4Exporter.create(
+          config.transparentBackground,
+          audioStream,
+          wantsAudio,
+        );
+      } catch (e) {
+        onProgress?.(e instanceof Error ? e.message : "MP4 export unavailable.");
+        onGeneratingChange(false);
+        mp4ExportActiveRef.current = false;
+        return;
+      }
+
+      const exporter = mp4ExporterRef.current;
+      const useRealtimePacing = exporter.getMode() === "mediarecorder";
+      const useLiveAudio = useRealtimePacing && wantsAudio && audioDest;
+      const prevCallback = sim.onBounceCallback;
+
+      if (useLiveAudio) {
+        setActiveRecordingNode(audioDest);
+        sim.onBounceCallback = (bounceCount, speed) => {
+          playBounceNote(config, bounceCount, speed);
+        };
+      } else {
+        sim.onBounceCallback = (bounceCount, speed) => {
+          bounceEventsRef.current.push({
+            timeMs: sim.elapsed * 1000,
+            bounceCount,
+            speed,
+          });
+        };
+      }
+
+      sim.startRecording();
+      sim.startTime = 0;
+
+      for (let frame = 0; frame < maxFrames; frame++) {
+        if (cancelled || !sim.recording) break;
+
+        const simNow = (durationMs * (frame + 1)) / maxFrames;
+        const dtMs = durationMs / maxFrames;
+        sim.tick(simNow, dtMs);
+        sim.draw(ctx);
+        exporter.addFrame(sim.captureTransparentFrame());
+        onProgress?.(`Encoding frame ${frame + 1}/${maxFrames} @ 60 fps`);
+
+        if (sim.isRecordingComplete()) break;
+
+        if (useRealtimePacing) {
+          await new Promise((resolve) => setTimeout(resolve, stepMs));
+        } else {
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+      }
+
+      // Ensure the final consumed frame is captured when we hit duration on the last tick.
+      if (!sim.isComplete && !cancelled) {
+        sim.tick(durationMs, durationMs / maxFrames);
+        sim.draw(ctx);
+        exporter.addFrame(sim.captureTransparentFrame());
+      }
+
+      sim.onBounceCallback = prevCallback;
+      sim.stopRecording();
+      mp4ExportActiveRef.current = false;
+      setActiveRecordingNode(null);
+
+      if (cancelled) {
+        mp4ExporterRef.current = null;
+        return;
+      }
+
+      try {
+        onProgress?.("Rendering soundtrack…");
+        let audioBlob: Blob | null = null;
+        if (wantsAudio && exporter.getMode() === "webcodecs") {
+          const durationSec = exporter.getFrameCount() / MP4_FPS;
+          const soundtrack = await renderBounceSoundtrack(
+            config,
+            bounceEventsRef.current,
+            durationSec,
+          );
+          audioBlob = audioBufferToWav(soundtrack);
+        }
+
+        onProgress?.("Finalizing MP4…");
+        const mp4Blob = await exporter.finish(audioBlob);
+        mp4ExporterRef.current = null;
+        onMp4Complete(mp4Blob);
+        onGeneratingChange(false);
+      } catch (e) {
+        console.error("MP4 export failed:", e);
+        mp4ExporterRef.current = null;
+        onProgress?.(e instanceof Error ? `MP4 Error: ${e.message}` : "MP4 export failed.");
+        onGeneratingChange(false);
+      }
+    };
+
+    void runMp4Export();
+
+    return () => {
+      cancelled = true;
+      mp4ExportActiveRef.current = false;
+    };
+  }, [
+    generating,
+    exportType,
+    config,
+    onGeneratingChange,
+    onMp4Complete,
+    onProgress,
+  ]);
 
   const handleReset = () => {
     const sim = simRef.current;

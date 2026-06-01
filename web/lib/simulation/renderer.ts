@@ -37,13 +37,13 @@ export class SceneBuffer {
     fromY: number,
     toX: number,
     toY: number,
-    ballRadius: number,
+    brushRadius: number,
     trailColor: string,
     transparent: boolean,
   ): void {
     if (fromX === toX && fromY === toY) return;
     const ctx = this.ctx;
-    
+
     if (transparent) {
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "rgba(0,0,0,1)";
@@ -51,17 +51,72 @@ export class SceneBuffer {
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = trailColor;
     }
-    
-    ctx.lineWidth = ballRadius * 2;
+
+    ctx.lineWidth = brushRadius * 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
     ctx.moveTo(fromX, fromY);
     ctx.lineTo(toX, toY);
     ctx.stroke();
-    
-    // Always restore source-over composite operation
+
     ctx.globalCompositeOperation = "source-over";
+  }
+
+  /** Stamp a circular eraser (used at wall contact). */
+  drawEraserDisc(
+    x: number,
+    y: number,
+    brushRadius: number,
+    trailColor: string,
+    transparent: boolean,
+  ): void {
+    if (brushRadius <= 0) return;
+    const ctx = this.ctx;
+
+    if (transparent) {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = "rgba(0,0,0,1)";
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = trailColor;
+    }
+
+    ctx.beginPath();
+    ctx.arc(x, y, brushRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  /**
+   * Fill only the thin unclean ring at the arena edge (ball brush stops short of the wall).
+   */
+  drawWallGapFill(
+    ballX: number,
+    ballY: number,
+    borderRadius: number,
+    ballRadius: number,
+    brushRadius: number,
+    trailColor: string,
+    transparent: boolean,
+  ): void {
+    const dx = ballX - CENTER_X;
+    const dy = ballY - CENTER_Y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 1e-6) return;
+
+    const nx = dx / dist;
+    const ny = dy / dist;
+    const radialGap = borderRadius - dist - brushRadius;
+    if (radialGap <= 0.5) return;
+
+    const fillRadius = Math.min(radialGap + 0.5, ballRadius * 0.4);
+    const fillDist = borderRadius - fillRadius;
+    const fillX = CENTER_X + nx * fillDist;
+    const fillY = CENTER_Y + ny * fillDist;
+
+    this.drawEraserDisc(fillX, fillY, fillRadius, trailColor, transparent);
   }
 
   /** Fill remaining white arena when progress hits 1.0 */

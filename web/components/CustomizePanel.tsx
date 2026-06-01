@@ -7,10 +7,16 @@ import {
   rgbToHue,
 } from "@/lib/simulation/colors";
 import {
+  DURATION_MAX_SEC,
+  DURATION_MIN_SEC,
+  DURATION_STEP_SEC,
+} from "@/lib/simulation/constants";
+import {
   buildPhysicsDefaults,
   normalizeStudioConfig,
   type StudioConfig,
 } from "@/lib/simulation/types";
+import { MP4_FPS } from "@/lib/videoExport";
 
 type Props = {
   config: StudioConfig;
@@ -80,13 +86,17 @@ export function CustomizePanel({
         <RangeField
           label="Duration"
           value={config.targetTime}
-          min={10}
-          max={120}
-          step={5}
+          min={DURATION_MIN_SEC}
+          max={DURATION_MAX_SEC}
+          step={DURATION_STEP_SEC}
           unit="s"
           disabled={disabled}
           onChange={(targetTime) => patch({ targetTime })}
         />
+        <p className="text-xs text-zinc-500">
+          MP4 export at 60 fps: ~{Math.ceil(config.targetTime * MP4_FPS)} frames
+          {config.targetTime > 120 ? " — longer exports take more time to encode." : ""}
+        </p>
       </section>
 
       <section className="space-y-3 border-b border-zinc-800 pb-4">
@@ -136,6 +146,16 @@ export function CustomizePanel({
           disabled={disabled}
           onChange={(ringRadius) => patch({ ringRadius })}
         />
+        <label className="flex items-center gap-2 cursor-pointer pt-1">
+          <input
+            type="checkbox"
+            checked={config.ballColorPerBounce}
+            disabled={disabled}
+            onChange={(e) => patch({ ballColorPerBounce: e.target.checked })}
+            className="rounded border-zinc-700 bg-zinc-950 text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
+          />
+          <span className="text-sm text-zinc-300">New ball color every bounce</span>
+        </label>
       </section>
 
       <section className="space-y-3 border-b border-zinc-800 pb-4">
@@ -209,6 +229,29 @@ export function CustomizePanel({
           disabled={disabled}
           onChange={(friction) => patch({ friction })}
         />
+        <RangeField
+          label="Bounce chaos (start)"
+          value={Math.round(config.jitterStart * 100)}
+          min={0}
+          max={70}
+          step={1}
+          unit="%"
+          disabled={disabled}
+          onChange={(pct) => patch({ jitterStart: pct / 100 })}
+        />
+        <RangeField
+          label="Bounce chaos (end)"
+          value={Math.round(config.jitterEnd * 100)}
+          min={Math.round(config.jitterStart * 100)}
+          max={70}
+          step={1}
+          unit="%"
+          disabled={disabled}
+          onChange={(pct) => patch({ jitterEnd: pct / 100 })}
+        />
+        <p className="text-xs text-zinc-500">
+          Higher chaos = less predictable wall bounces. Randomize colors to change the seed.
+        </p>
 
         <div className="pt-2 space-y-3 border-t border-zinc-800/60">
           <label className="block space-y-1">
@@ -283,8 +326,8 @@ export function CustomizePanel({
         <RangeField
           label="Eraser start"
           value={config.eraserStart}
-          min={20}
-          max={100}
+          min={4}
+          max={60}
           step={1}
           unit=" px"
           disabled={disabled}
@@ -294,7 +337,7 @@ export function CustomizePanel({
           label="Eraser end"
           value={config.eraserEnd}
           min={config.eraserStart}
-          max={120}
+          max={80}
           step={1}
           unit=" px"
           disabled={disabled}
@@ -314,7 +357,7 @@ export function CustomizePanel({
             disabled={disabled}
             onChange={(e) => patch({ watermarkText: e.target.value })}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
-            placeholder="MACKEWINSSON"
+            placeholder="Optional watermark"
           />
         </label>
         <RangeField

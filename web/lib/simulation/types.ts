@@ -1,4 +1,4 @@
-import { CINEMATIC_CONFIG, scaleFromCanvas } from "./constants";
+import { CINEMATIC_CONFIG, DURATION_MAX_SEC, DURATION_MIN_SEC, scaleFromCanvas } from "./constants";
 
 export type Rgb = [number, number, number];
 export type Rgba = [number, number, number, number];
@@ -27,8 +27,8 @@ export function buildPhysicsDefaults() {
     targetTime: CINEMATIC_CONFIG.targetTime,
     initialSpeed: 8,
     finalSpeed: 8,
-    jitterStart: 0.18,
-    jitterEnd: 0.35,
+    jitterStart: 0.25,
+    jitterEnd: 0.5,
   };
 }
 
@@ -63,6 +63,8 @@ export interface StudioConfig {
   soundPalette: "pentatonic" | "escalating" | "chime" | "marimba";
   // Transparency
   transparentBackground: boolean;
+  /** Shift ball hue on every wall bounce. */
+  ballColorPerBounce: boolean;
 }
 
 export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
@@ -74,11 +76,11 @@ export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
     initialSpeed,
     55,
   );
-  const eraserStart = clamp(config.eraserStart, 8, 100);
-  const eraserEnd = clamp(Math.max(config.eraserEnd, eraserStart), eraserStart, 120);
+  const eraserStart = clamp(config.eraserStart, 4, 80);
+  const eraserEnd = clamp(Math.max(config.eraserEnd, eraserStart), eraserStart, 100);
   return {
     ...config,
-    targetTime: clamp(config.targetTime, 10, 120),
+    targetTime: clamp(config.targetTime, DURATION_MIN_SEC, DURATION_MAX_SEC),
     borderRadius,
     ringRadius,
     initialVelX: config.initialVelX,
@@ -101,13 +103,14 @@ export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
     soundEnabled: config.soundEnabled ?? true,
     soundPalette: config.soundPalette ?? "pentatonic",
     transparentBackground: config.transparentBackground ?? false,
+    ballColorPerBounce: config.ballColorPerBounce ?? false,
   };
 }
 
 export const defaultStudioConfig = (): StudioConfig => {
   const baseHue = 0.6; // Beautiful static violet hue for stable SSR rendering
   return normalizeStudioConfig({
-    watermarkText: "MACKEWINSSON",
+    watermarkText: "",
     watermarkOpacity: 0.25,
     baseHue,
     ballHue: (baseHue + 0.5) % 1,
@@ -120,6 +123,7 @@ export const defaultStudioConfig = (): StudioConfig => {
     soundEnabled: true,
     soundPalette: "pentatonic",
     transparentBackground: false,
+    ballColorPerBounce: false,
   });
 };
 
