@@ -108,15 +108,17 @@ export class SceneBuffer {
 
     const nx = dx / dist;
     const ny = dy / dist;
-    const radialGap = borderRadius - dist - brushRadius;
-    if (radialGap <= 0.5) return;
 
-    const fillRadius = Math.min(radialGap + 0.5, ballRadius * 0.4);
-    const fillDist = borderRadius - fillRadius;
-    const fillX = CENTER_X + nx * fillDist;
-    const fillY = CENTER_Y + ny * fillDist;
+    // To ensure the eraser erases all the way to the wall, we stamp a disc at the wall
+    // with a radius equal to the maximum of the brush radius and the ball radius.
+    // This perfectly covers any gap between the eraser trail and the outer border
+    // without leaving any thin unclean ring or sliver.
+    const stampRadius = Math.max(brushRadius, ballRadius);
+    const stampDist = borderRadius - stampRadius;
+    const stampX = CENTER_X + nx * stampDist;
+    const stampY = CENTER_Y + ny * stampDist;
 
-    this.drawEraserDisc(fillX, fillY, fillRadius, trailColor, transparent);
+    this.drawEraserDisc(stampX, stampY, stampRadius, trailColor, transparent);
   }
 
   /** Fill remaining white arena when progress hits 1.0 */
@@ -302,6 +304,14 @@ export function captureFrame(
   currentRadius: number,
   progress: number,
   frozen = false,
+  confettiParticles?: Array<{
+    x: number;
+    y: number;
+    color: string;
+    size: number;
+    rotation: number;
+    opacity: number;
+  }>,
 ): ImageData {
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
@@ -321,6 +331,7 @@ export function captureFrame(
     currentRadius,
     progress,
     frozen,
+    confettiParticles,
   });
   return ctx.getImageData(0, 0, WIDTH, HEIGHT);
 }

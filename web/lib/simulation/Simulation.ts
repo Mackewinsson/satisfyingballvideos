@@ -77,8 +77,7 @@ export class Simulation {
   }
 
   private beginAnimationClock(): void {
-    this.startTime =
-      typeof performance !== "undefined" ? performance.now() : Date.now();
+    this.startTime = null;
     this.progress = 0;
     this.isComplete = false;
   }
@@ -438,7 +437,7 @@ export class Simulation {
   }
 
   isRecordingComplete(): boolean {
-    return this.recording && this.isComplete;
+    return this.recording && this.isComplete && this.confettiParticles.length === 0;
   }
 
   shouldAnimate(): boolean {
@@ -475,6 +474,7 @@ export class Simulation {
       this.currentRadius,
       this.progress,
       this.isComplete,
+      this.confettiParticles,
     );
   }
 }

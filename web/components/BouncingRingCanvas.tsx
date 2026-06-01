@@ -385,7 +385,7 @@ export function BouncingRingCanvas({
       sim.startRecording();
       sim.startTime = 0;
 
-      for (let frame = 0; frame < maxFrames; frame++) {
+      for (let frame = 0; ; frame++) {
         if (cancelled || !sim.recording) break;
 
         const simNow = (durationMs * (frame + 1)) / maxFrames;
@@ -393,9 +393,15 @@ export function BouncingRingCanvas({
         sim.tick(simNow, dtMs);
         sim.draw(ctx);
         exporter.addFrame(sim.captureTransparentFrame());
-        onProgress?.(`Encoding frame ${frame + 1}/${maxFrames} @ 60 fps`);
 
-        if (sim.isRecordingComplete()) break;
+        if (frame < maxFrames) {
+          onProgress?.(`Encoding frame ${frame + 1}/${maxFrames} @ 60 fps`);
+        } else {
+          onProgress?.(`Encoding transitions (Confetti) @ 60 fps`);
+        }
+
+        const safetyLimit = maxFrames + 300;
+        if (sim.isRecordingComplete() || frame >= safetyLimit) break;
 
         if (useRealtimePacing) {
           await new Promise((resolve) => setTimeout(resolve, stepMs));
