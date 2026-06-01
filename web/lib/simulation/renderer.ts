@@ -137,7 +137,9 @@ export function drawScene(
   ctx.arc(CENTER_X, CENTER_Y, borderRadius, 0, Math.PI * 2);
   ctx.stroke();
 
-  drawBall(ctx, scheme, ballX, ballY, currentRadius);
+  if (!frozen) {
+    drawBall(ctx, scheme, ballX, ballY, currentRadius);
+  }
   drawWatermark(ctx, config.watermarkText, config.watermarkOpacity);
 
   if (opts.confettiParticles && opts.confettiParticles.length > 0) {

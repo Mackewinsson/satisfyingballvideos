@@ -193,7 +193,6 @@ export class Simulation {
     this.scene.fillArenaConsumed(this.trailColor, this.config.borderRadius);
     this.clearPct = 1;
     this.progress = 1;
-    this.currentRadius = this.config.borderRadius;
     this.velX = 0;
     this.velY = 0;
     this.isComplete = true;
