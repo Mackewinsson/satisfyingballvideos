@@ -20,6 +20,7 @@ export class SceneBuffer {
     borderRadius: number,
     transparent: boolean,
     trailMode: TrailMode,
+    arenaColor = "#ffffff",
   ): void {
     const ctx = this.ctx;
     ctx.globalCompositeOperation = "source-over";
@@ -29,7 +30,7 @@ export class SceneBuffer {
       if (!transparent) {
         ctx.fillStyle = rgbCss(scheme.bg);
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = arenaColor;
         ctx.beginPath();
         ctx.arc(CENTER_X, CENTER_Y, borderRadius, 0, Math.PI * 2);
         ctx.fill();
@@ -41,7 +42,7 @@ export class SceneBuffer {
       ctx.fillStyle = rgbCss(scheme.bg);
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = arenaColor;
     ctx.beginPath();
     ctx.arc(CENTER_X, CENTER_Y, borderRadius, 0, Math.PI * 2);
     ctx.fill();
@@ -443,6 +444,7 @@ export function estimateTrailProgress(
   borderRadius: number,
   transparent: boolean,
   trailMode: TrailMode,
+  arenaColor = "#ffffff",
 ): number {
   const scale = 6;
   const sw = Math.floor(WIDTH / scale);
@@ -456,6 +458,15 @@ export function estimateTrailProgress(
   const cx = CENTER_X / scale;
   const cy = CENTER_Y / scale;
   const br = borderRadius / scale;
+
+  let ar = 255, ag = 255, ab = 255;
+  try {
+    const hex = arenaColor.replace("#", "");
+    ar = parseInt(hex.slice(0, 2), 16);
+    ag = parseInt(hex.slice(2, 4), 16);
+    ab = parseInt(hex.slice(4, 6), 16);
+  } catch {}
+
   let count = 0;
   let covered = 0;
   for (let y = 0; y < sh; y++) {
@@ -469,14 +480,15 @@ export function estimateTrailProgress(
         const g = data[i + 1];
         const b = data[i + 2];
         const a = data[i + 3];
-        const isCovered =
-          trailMode === "paint"
-            ? transparent
-              ? a > 64
-              : r + g + b < 720
-            : transparent
-              ? a < 192
-              : r + g + b < 600;
+
+        let isCovered = false;
+        if (transparent) {
+          isCovered = trailMode === "paint" ? a > 64 : a < 192;
+        } else {
+          const distSq = (r - ar) ** 2 + (g - ag) ** 2 + (b - ab) ** 2;
+          isCovered = distSq > 1000;
+        }
+
         if (isCovered) covered++;
       }
     }

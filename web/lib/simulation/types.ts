@@ -45,6 +45,7 @@ export interface StudioConfig {
   transparentBackground: boolean;
   /** Shift ball hue on every wall bounce. */
   ballColorPerBounce: boolean;
+  arenaColor: string;
 }
 
 export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
@@ -70,6 +71,7 @@ export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
     // Paint mode uses a fixed complement ball vs trail; hue shifts break the look.
     ballColorPerBounce:
       config.trailMode === "paint" ? false : (config.ballColorPerBounce ?? false),
+    arenaColor: config.arenaColor ?? "#ffffff",
   };
 }
 
@@ -86,6 +88,7 @@ export const defaultStudioConfig = (): StudioConfig => {
     soundPalette: "pentatonic",
     transparentBackground: false,
     ballColorPerBounce: false,
+    arenaColor: "#ffffff",
   });
 };
 

@@ -102,6 +102,37 @@ export function ballColorFromHue(ballHue: number): Rgb {
   return hsvToRgb(ballHue, 0.85, 0.92);
 }
 
+function isAchromaticRgb([r, g, b]: Rgb, threshold = 20): boolean {
+  return Math.max(r, g, b) - Math.min(r, g, b) < threshold;
+}
+
+/** White arena + ball hue 180° away — strongest ball vs arena contrast. */
+export function contrastingBallArenaColors(seedHue = Math.random()): {
+  arenaColor: string;
+  ballHue: number;
+  baseHue: number;
+} {
+  const baseHue = ((seedHue % 1) + 1) % 1;
+  return {
+    baseHue,
+    ballHue: (baseHue + 0.5) % 1,
+    arenaColor: "#ffffff",
+  };
+}
+
+/** Swap ball and arena colors; achromatic arenas become a complement ball hue. */
+export function swapBallAndArenaColors(
+  ballHue: number,
+  arenaColor: string,
+): { ballHue: number; arenaColor: string } {
+  const newArenaColor = `#${rgbToHex(ballColorFromHue(ballHue))}`;
+  const arenaRgb = hexToRgb(arenaColor);
+  const newBallHue = isAchromaticRgb(arenaRgb)
+    ? (rgbToHue(...hexToRgb(newArenaColor)) + 0.5) % 1
+    : rgbToHue(...arenaRgb);
+  return { ballHue: newBallHue, arenaColor: newArenaColor };
+}
+
 function relativeLuminance([r, g, b]: Rgb): number {
   const channel = (v: number) => {
     const c = v / 255;

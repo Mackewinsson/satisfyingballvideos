@@ -23,6 +23,8 @@ type Props = {
   config: StudioConfig;
   onChange: (config: StudioConfig) => void;
   onRandomize: () => void;
+  onSwitchColors: () => void;
+  onResetColors: () => void;
   onResetPhysics?: () => void;
   disabled?: boolean;
 };
@@ -70,6 +72,8 @@ export function CustomizePanel({
   config,
   onChange,
   onRandomize,
+  onSwitchColors,
+  onResetColors,
   onResetPhysics,
   disabled,
 }: Props) {
@@ -137,14 +141,47 @@ export function CustomizePanel({
             #{rgbToHex(ballColorFromHue(config.ballHue))}
           </span>
         </div>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onRandomize}
-          className="w-full rounded-lg border border-violet-600/50 bg-violet-950/40 px-3 py-2 text-sm text-violet-200 hover:bg-violet-900/50"
-        >
-          Randomize colors
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-zinc-400 shrink-0">Arena color</label>
+          <input
+            type="color"
+            disabled={disabled}
+            value={config.arenaColor}
+            onChange={(e) => {
+              patch({ arenaColor: e.target.value });
+            }}
+            className="h-10 w-14 cursor-pointer rounded border border-zinc-600 bg-transparent"
+          />
+          <span className="text-xs text-zinc-500">
+            {config.arenaColor.toUpperCase()}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onSwitchColors}
+            className="rounded-lg border border-zinc-600 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+          >
+            Switch colors
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onResetColors}
+            className="rounded-lg border border-violet-600/50 bg-violet-950/40 px-3 py-2 text-sm text-violet-200 hover:bg-violet-900/50"
+          >
+            Reset colors
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onRandomize}
+            className="rounded-lg border border-zinc-600 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+          >
+            Randomize
+          </button>
+        </div>
       </section>
 
       <section className="space-y-3 border-b border-zinc-800 pb-4">

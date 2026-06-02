@@ -83,6 +83,7 @@ export class Simulation {
       this.config.borderRadius,
       this.config.transparentBackground,
       this.config.trailMode,
+      this.config.arenaColor,
     );
   }
 
@@ -98,6 +99,7 @@ export class Simulation {
     const schemeChanged =
       this.config.baseHue !== prev.baseHue ||
       this.config.ballHue !== prev.ballHue ||
+      this.config.arenaColor !== prev.arenaColor ||
       this.config.ballColorPerBounce !== prev.ballColorPerBounce ||
       this.config.borderRadius !== prev.borderRadius ||
       this.config.transparentBackground !== prev.transparentBackground ||
@@ -387,6 +389,7 @@ export class Simulation {
         borderRadius,
         this.config.transparentBackground,
         this.config.trailMode,
+        this.config.arenaColor,
       );
     } else {
       this.clearTimer += dtMs;
@@ -396,6 +399,7 @@ export class Simulation {
           borderRadius,
           this.config.transparentBackground,
           this.config.trailMode,
+          this.config.arenaColor,
         );
         this.clearTimer = 0;
       }

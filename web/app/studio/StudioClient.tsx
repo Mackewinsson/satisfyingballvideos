@@ -8,7 +8,11 @@ import { CustomizePanel } from "@/components/CustomizePanel";
 import { PayModal } from "@/components/PayModal";
 import { downloadGif, type GifExportResult } from "@/lib/gifExport";
 import { downloadBlob, isMp4ExportSupported, isWebMTransparentSupported } from "@/lib/videoExport";
-import { generateColorScheme } from "@/lib/simulation/colors";
+import {
+  contrastingBallArenaColors,
+  generateColorScheme,
+  swapBallAndArenaColors,
+} from "@/lib/simulation/colors";
 import { computeRenderId } from "@/lib/renderId";
 import { isUnlocked, requestUnlock } from "@/lib/paywall";
 import {
@@ -73,6 +77,27 @@ export function StudioClient() {
         ...c,
         baseHue,
         ballHue: (baseHue + 0.5) % 1,
+      }),
+    );
+  };
+
+  const handleSwitchColors = () => {
+    clearExports();
+    setConfig((c) => {
+      const { ballHue, arenaColor } = swapBallAndArenaColors(c.ballHue, c.arenaColor);
+      return normalizeStudioConfig({ ...c, ballHue, arenaColor });
+    });
+  };
+
+  const handleResetColors = () => {
+    clearExports();
+    const { arenaColor, ballHue, baseHue } = contrastingBallArenaColors();
+    setConfig((c) =>
+      normalizeStudioConfig({
+        ...c,
+        arenaColor,
+        ballHue,
+        baseHue,
       }),
     );
   };
@@ -212,6 +237,8 @@ export function StudioClient() {
             setConfig(normalizeStudioConfig(c));
           }}
           onRandomize={handleRandomize}
+          onSwitchColors={handleSwitchColors}
+          onResetColors={handleResetColors}
           onResetPhysics={handleResetPhysics}
           disabled={generating}
         />
