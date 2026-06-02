@@ -1,11 +1,10 @@
-# Satisfying Ring Studio (web MVP)
+# Satisfying Ring Studio
 
-Next.js micro-site: customize the bouncing-ring animation in the browser, pay to download a transparent GIF.
+Next.js app: customize the bouncing-ring animation in the browser and export MP4, GIF, WebM, or PNG sequences.
 
 ## Setup
 
 ```bash
-cd web
 cp .env.example .env.local
 npm install
 npm run dev
@@ -20,9 +19,9 @@ Open [http://localhost:3000](http://localhost:3000) — **Studio** at `/studio`.
 
 ## Deploy (Vercel)
 
-1. Import repo; set **Root Directory** to `web`.
+1. Import this repo (root directory is the project root).
 2. Add env vars (`PAYWALL_BYPASS=false` in production).
-3. Deploy.
+3. Push to `main` for automatic production deploys.
 
 ## Structure
 
