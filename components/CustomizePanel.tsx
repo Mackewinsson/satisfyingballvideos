@@ -100,7 +100,7 @@ export function CustomizePanel({
           onChange={(targetTime) => patch({ targetTime })}
         />
         <p className="text-xs text-zinc-500">
-          MP4 export at 60 fps: ~{Math.ceil(config.targetTime * MP4_FPS)} frames
+          MP4 export at {MP4_FPS} fps: ~{Math.ceil(config.targetTime * MP4_FPS)} frames
           {config.targetTime > 120 ? " — longer exports take more time to encode." : ""}
         </p>
       </section>

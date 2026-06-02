@@ -165,7 +165,7 @@ export function StudioClient() {
 
   const handleMp4Complete = useCallback((blob: Blob) => {
     setMp4Export(blob);
-    setStatus(`60 fps MP4 ready (${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB). Drop into Final Cut Pro.`);
+    setStatus(`120 fps MP4 ready (${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB). Drop into Final Cut Pro.`);
   }, []);
 
   const runDownload = useCallback(() => {
@@ -280,7 +280,7 @@ export function StudioClient() {
                     : "border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
                 }`}
               >
-                🎞️ MP4 (60 fps)
+                🎞️ MP4 (120 fps)
               </button>
               <button
                 type="button"
@@ -323,14 +323,14 @@ export function StudioClient() {
             {/* Educational / Tooltip Warnings for Video Editors */}
             {exportType === "mp4" && (
               <div className="text-xs space-y-1.5 p-3 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-400">
-                <p className="font-semibold text-zinc-300">🎞️ One-file 60 fps for Final Cut Pro</p>
+                <p className="font-semibold text-zinc-300">🎞️ One-file 120 fps for Final Cut Pro</p>
                 {!mp4Supported ? (
                   <p className="text-amber-500 font-medium">
                     ⚠️ MP4 encoding is not supported in this browser. Use Chrome or Edge, or export a PNG Sequence (ZIP).
                   </p>
                 ) : (
                   <p>
-                    Encodes every frame at 60 fps into a single H.264 MP4 with bounce audio — no ffmpeg or manual import needed. Drag straight into Final Cut Pro.
+                    Encodes every frame at 120 fps into a single H.264 MP4 with bounce audio — no ffmpeg or manual import needed. Drag straight into Final Cut Pro.
                   </p>
                 )}
                 {config.transparentBackground && (

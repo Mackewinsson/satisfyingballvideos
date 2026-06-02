@@ -210,15 +210,18 @@ export class Mp4Exporter {
   private recordedChunks: Blob[] = [];
   private stream: MediaStream | null = null;
   private mimeType = "video/mp4";
+  readonly fps: number;
 
   private constructor(
     mode: Mp4ExportMode,
     compositeOnBlack: boolean,
     width: number,
     height: number,
+    fps: number,
   ) {
     this.mode = mode;
     this.compositeOnBlack = compositeOnBlack;
+    this.fps = fps;
     this.exportCanvas = document.createElement("canvas");
     this.exportCanvas.width = width;
     this.exportCanvas.height = height;
@@ -232,14 +235,14 @@ export class Mp4Exporter {
     audioStream?: MediaStream,
     withAudio = false,
   ): Promise<Mp4Exporter> {
-    const exporter = new Mp4Exporter(
-      "webcodecs",
-      compositeOnBlack,
-      1080,
-      1920,
-    );
-
     if (await isWebCodecsH264Supported(1080, 1920)) {
+      const exporter = new Mp4Exporter(
+        "webcodecs",
+        compositeOnBlack,
+        1080,
+        1920,
+        MP4_FPS,
+      );
       exporter.initWebCodecs(withAudio);
       return exporter;
     }
@@ -249,7 +252,13 @@ export class Mp4Exporter {
       throw new Error("MP4 export is not supported in this browser.");
     }
 
-    exporter.mode = "mediarecorder";
+    const exporter = new Mp4Exporter(
+      "mediarecorder",
+      compositeOnBlack,
+      1080,
+      1920,
+      MP4_FPS,
+    );
     exporter.mimeType = mimeType;
     exporter.initMediaRecorder(mimeType, audioStream);
     return exporter;
@@ -281,12 +290,12 @@ export class Mp4Exporter {
       width: 1080,
       height: 1920,
       bitrate: MP4_BITRATE,
-      framerate: MP4_FPS,
+      framerate: this.fps,
     });
   }
 
   private initMediaRecorder(mimeType: string, audioStream?: MediaStream): void {
-    this.stream = this.exportCanvas.captureStream(MP4_FPS);
+    this.stream = this.exportCanvas.captureStream(this.fps);
     if (audioStream) {
       const audioTrack = audioStream.getAudioTracks()[0];
       if (audioTrack) this.stream.addTrack(audioTrack);
@@ -311,14 +320,14 @@ export class Mp4Exporter {
     this.exportCtx.putImageData(imageData, x, y);
 
     if (this.mode === "webcodecs" && this.videoEncoder) {
-      const durationUs = Math.round(1_000_000 / MP4_FPS);
+      const durationUs = Math.round(1_000_000 / this.fps);
       const timestamp = this.frameIndex * durationUs;
       const frame = new VideoFrame(this.exportCanvas, {
         timestamp,
         duration: durationUs,
       });
       this.videoEncoder.encode(frame, {
-        keyFrame: this.frameIndex % (MP4_FPS * 2) === 0,
+        keyFrame: this.frameIndex % (this.fps * 2) === 0,
       });
       frame.close();
     }
@@ -342,7 +351,7 @@ export class Mp4Exporter {
       if (this.frameIndex === 0) throw new Error("No frames recorded");
 
       if (audioWav && audioWav.size > 44) {
-        const durationSec = this.frameIndex / MP4_FPS;
+        const durationSec = this.frameIndex / this.fps;
         await muxWavAudio(audioWav, this.muxer, durationSec);
       }
 
