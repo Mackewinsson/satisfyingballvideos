@@ -12,6 +12,8 @@ import {
   contrastingBallArenaColors,
   generateColorScheme,
   swapBallAndArenaColors,
+  ballColorFromHue,
+  rgbToHex,
 } from "@/lib/simulation/colors";
 import { computeRenderId } from "@/lib/renderId";
 import { requestUnlock } from "@/lib/paywall";
@@ -82,12 +84,15 @@ export function StudioClient() {
   };
 
   const handleRandomize = () => {
-    const baseHue = Math.random();
+    const ballHue = Math.random();
+    const arenaHue = (ballHue + 0.5) % 1;
+    const arenaColor = "#" + rgbToHex(ballColorFromHue(arenaHue));
     setConfig((c) =>
       normalizeStudioConfig({
         ...c,
-        baseHue,
-        ballHue: (baseHue + 0.5) % 1,
+        baseHue: arenaHue,
+        ballHue,
+        arenaColor,
       }),
     );
   };
