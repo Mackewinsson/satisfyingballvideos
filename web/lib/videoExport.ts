@@ -4,8 +4,8 @@ import { rgbToHex } from "./simulation/colors";
 import { HEIGHT, WIDTH } from "./simulation/constants";
 import type { Rgb } from "./simulation/types";
 
-/** Full-rate export for MP4 (simulation runs at 60 fps). */
-export const MP4_FPS = 60;
+/** Full-rate export for MP4 (simulation runs at 120 fps). */
+export const MP4_FPS = 120;
 const MP4_BITRATE = 12_000_000;
 const MP4_AUDIO_BITRATE = 192_000;
 const MP4_AUDIO_SAMPLE_RATE = 48_000;

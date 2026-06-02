@@ -347,7 +347,7 @@ export function BouncingRingCanvas({
           setActiveRecordingNode(dest);
           audioStream = dest.stream;
         }
-        webmRecorderRef.current = new WebMAlphaRecorder(canvas, 30, audioStream);
+        webmRecorderRef.current = new WebMAlphaRecorder(canvas, 120, audioStream);
         webmRecorderRef.current.start();
       }
 
@@ -445,9 +445,9 @@ export function BouncingRingCanvas({
         exporter.addFrame(sim.captureTransparentFrame());
 
         if (frame < maxFrames) {
-          onProgress?.(`Encoding frame ${frame + 1}/${maxFrames} @ 60 fps`);
+          onProgress?.(`Encoding frame ${frame + 1}/${maxFrames} @ 120 fps`);
         } else {
-          onProgress?.(`Encoding transitions (Confetti) @ 60 fps`);
+          onProgress?.(`Encoding transitions (Confetti) @ 120 fps`);
         }
 
         const safetyLimit = maxFrames + 300;

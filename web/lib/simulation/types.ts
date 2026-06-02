@@ -76,7 +76,7 @@ export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
 export const defaultStudioConfig = (): StudioConfig => {
   const baseHue = 0.6;
   return normalizeStudioConfig({
-    watermarkText: "",
+    watermarkText: "Satisfying ball videos",
     watermarkOpacity: 0.25,
     baseHue,
     ballHue: (baseHue + 0.5) % 1,
