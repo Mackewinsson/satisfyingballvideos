@@ -99,6 +99,15 @@ export function BouncingRingCanvas({
   const loopRef = useRef<(time: number) => void>(() => {});
   const previewingRef = useRef(true);
   const [previewing, setPreviewing] = useState(true);
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
+
+  const reportProgress = useCallback(
+    (text: string) => {
+      setExportProgress(text);
+      onProgress?.(text);
+    },
+    [onProgress],
+  );
 
   const setPreviewingActive = useCallback((active: boolean) => {
     previewingRef.current = active;
@@ -437,7 +446,7 @@ export function BouncingRingCanvas({
           wantsAudio,
         );
       } catch (e) {
-        onProgress?.(e instanceof Error ? e.message : "MP4 export unavailable.");
+        reportProgress(e instanceof Error ? e.message : "MP4 export unavailable.");
         onGeneratingChange(false);
         mp4ExportActiveRef.current = false;
         return;
@@ -488,9 +497,9 @@ export function BouncingRingCanvas({
         exporter.addFrame(sim.captureTransparentFrame());
 
         if (frame < maxFrames) {
-          onProgress?.(`Encoding frame ${frame + 1}/${maxFrames} @ ${exportFps} fps`);
+          reportProgress(`Encoding frame ${frame + 1}/${maxFrames} @ ${exportFps} fps`);
         } else {
-          onProgress?.(`Encoding transitions (Confetti) @ ${exportFps} fps`);
+          reportProgress(`Encoding transitions (Confetti) @ ${exportFps} fps`);
         }
 
         const safetyLimit = maxFrames + 300;
@@ -524,7 +533,7 @@ export function BouncingRingCanvas({
       }
 
       try {
-        onProgress?.("Rendering soundtrack…");
+        reportProgress("Rendering soundtrack…");
         let audioBlob: Blob | null = null;
         if (wantsAudio && exporter.getMode() === "webcodecs") {
           const durationSec = exporter.getFrameCount() / exportFps;
@@ -536,15 +545,17 @@ export function BouncingRingCanvas({
           audioBlob = audioBufferToWav(soundtrack);
         }
 
-        onProgress?.("Finalizing MP4…");
+        reportProgress("Finalizing MP4…");
         const mp4Blob = await exporter.finish(audioBlob);
         mp4ExporterRef.current = null;
+        setExportProgress(null);
         onMp4Complete(mp4Blob);
         onGeneratingChange(false);
       } catch (e) {
         console.error("MP4 export failed:", e);
         mp4ExporterRef.current = null;
-        onProgress?.(e instanceof Error ? `MP4 Error: ${e.message}` : "MP4 export failed.");
+        reportProgress(e instanceof Error ? `MP4 Error: ${e.message}` : "MP4 export failed.");
+        setExportProgress(null);
         onGeneratingChange(false);
       }
     };
@@ -575,15 +586,53 @@ export function BouncingRingCanvas({
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <canvas
-        ref={canvasRef}
-        width={WIDTH}
-        height={HEIGHT}
-        className={`max-w-full h-auto rounded-xl border border-zinc-700 shadow-2xl ${
-          config.transparentBackground ? "canvas-checkerboard" : ""
-        }`}
+      {/* Canvas wrapper — overlay is shown during MP4 encoding */}
+      <div
+        className="relative"
         style={{ width: "min(100%, 800px)", aspectRatio: "1" }}
-      />
+      >
+        <canvas
+          ref={canvasRef}
+          width={WIDTH}
+          height={HEIGHT}
+          className={`w-full h-full rounded-xl border border-zinc-700 shadow-2xl ${
+            config.transparentBackground ? "canvas-checkerboard" : ""
+          } ${
+            generating && exportType === "mp4" ? "opacity-20" : ""
+          }`}
+          style={{ display: "block", transition: "opacity 0.3s" }}
+        />
+
+        {generating && exportType === "mp4" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 rounded-xl bg-zinc-950/80 backdrop-blur-sm">
+            {/* Spinner */}
+            <svg
+              className="animate-spin"
+              width="52"
+              height="52"
+              viewBox="0 0 52 52"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="26" cy="26" r="22" stroke="#3f3f46" strokeWidth="4" />
+              <path
+                d="M26 4a22 22 0 0 1 22 22"
+                stroke="#7c3aed"
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+            </svg>
+
+            <div className="text-center space-y-1 px-6">
+              <p className="text-sm font-semibold text-zinc-100">Encoding MP4…</p>
+              {exportProgress && (
+                <p className="text-xs text-zinc-400 font-mono leading-snug">{exportProgress}</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="flex gap-2 text-sm">
         <button
           type="button"
