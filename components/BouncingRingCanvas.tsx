@@ -459,17 +459,24 @@ export function BouncingRingCanvas({
 
     const durationMs = config.targetTime * 1000;
     const exportFps = GIF_FPS;
-    const stepMs = 1000 / exportFps;
     const maxFrames = Math.ceil(config.targetTime * exportFps);
     const runGifExport = async () => {
       sim.startRecording();
       sim.startTime = 0;
 
+      let physicsSimTime = 0;
+      const physicsStepMs = 1000 / 120;
+
       for (let frame = 0; ; frame++) {
         if (cancelled || !sim.recording) break;
 
-        const simNow = (durationMs * (frame + 1)) / maxFrames;
-        sim.tick(simNow, stepMs);
+        const targetSimNow = (durationMs * (frame + 1)) / maxFrames;
+        
+        while (physicsSimTime < targetSimNow) {
+          physicsSimTime += physicsStepMs;
+          sim.tick(physicsSimTime, physicsStepMs);
+        }
+
         sim.draw(ctx);
         encoder.addFrame(sim.captureTransparentFrame());
 
@@ -483,7 +490,10 @@ export function BouncingRingCanvas({
       }
 
       if (!sim.isComplete && !cancelled) {
-        sim.tick(durationMs, stepMs);
+        while (physicsSimTime < durationMs) {
+          physicsSimTime += physicsStepMs;
+          sim.tick(physicsSimTime, physicsStepMs);
+        }
         sim.draw(ctx);
         encoder.addFrame(sim.captureTransparentFrame());
       }

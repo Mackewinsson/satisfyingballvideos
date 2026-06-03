@@ -1,11 +1,9 @@
 import { GIFEncoder, quantize, applyPalette } from "gifenc";
 import { rgbToHex } from "./simulation/colors";
 import type { Rgb } from "./simulation/types";
-import { MP4_FPS } from "./videoExport";
-
-/** Match MP4 export rate so GIF motion is equally smooth. */
-export const GIF_FPS = MP4_FPS;
-const FRAME_DELAY_MS = Math.round(1000 / GIF_FPS);
+/** 50 fps is the highest perfectly smooth framerate for GIFs (exactly 20ms delay per frame). */
+export const GIF_FPS = 50;
+const FRAME_DELAY_MS = 20;
 
 /** Encodes frames one-by-one so a long capture does not hold every ImageData in RAM. */
 export class GifStreamEncoder {
