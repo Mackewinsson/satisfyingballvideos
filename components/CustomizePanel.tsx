@@ -197,8 +197,8 @@ export function CustomizePanel({
               const trailMode = e.target.value as StudioConfig["trailMode"];
               patch({
                 trailMode,
-                transparentBackground: trailMode === "paint" || trailMode === "weave",
-                ballColorPerBounce: trailMode === "paint" || trailMode === "weave" ? false : config.ballColorPerBounce,
+                transparentBackground: trailMode === "paint" || trailMode === "weave" ? true : config.transparentBackground,
+                ballColorPerBounce: trailMode === "paint" ? false : config.ballColorPerBounce,
               });
             }}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
@@ -208,11 +208,61 @@ export function CustomizePanel({
             <option value="weave">Weave string art</option>
           </select>
         </label>
-        <p className="text-xs text-zinc-500">
-          {config.trailMode === "paint"
-            ? "Ball paints colored strokes. Transparent background is on by default — change it in Advanced options."
-            : "Ball erases the white arena to reveal the background color."}
-        </p>
+        
+        {config.trailMode === "weave" && (
+          <>
+            <label className="block space-y-2 pt-2 border-t border-zinc-800/50">
+              <div className="flex justify-between">
+                <span className="text-sm text-zinc-400">Line width</span>
+                <span className="text-sm text-zinc-500">{config.weaveLineWidth}px</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                disabled={disabled}
+                value={config.weaveLineWidth}
+                onChange={(e) => patch({ weaveLineWidth: Number(e.target.value) })}
+                className="w-full accent-violet-500"
+              />
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={config.ballColorPerBounce}
+                disabled={disabled}
+                onChange={(e) => patch({ ballColorPerBounce: e.target.checked })}
+                className="rounded border-zinc-700 bg-zinc-950 text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
+              />
+              <span className="text-sm text-zinc-300">Rainbow lines</span>
+            </label>
+          </>
+        )}
+
+        {config.trailMode === "paint" && (
+          <p className="text-xs text-zinc-500 pt-2 border-t border-zinc-800/50">
+            Ball paints colored strokes. Transparent background is recommended (enable in Advanced options).
+          </p>
+        )}
+        
+        {config.trailMode === "erase" && (
+          <>
+            <p className="text-xs text-zinc-500 pt-2 border-t border-zinc-800/50">
+              Ball erases the white arena to reveal the background color.
+            </p>
+            <label className="flex items-center gap-2 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={config.ballColorPerBounce}
+                disabled={disabled}
+                onChange={(e) => patch({ ballColorPerBounce: e.target.checked })}
+                className="rounded border-zinc-700 bg-zinc-950 text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
+              />
+              <span className="text-sm text-zinc-300">Rainbow ball</span>
+            </label>
+          </>
+        )}
       </section>
 
       <section className="space-y-3">
@@ -315,18 +365,6 @@ export function CustomizePanel({
                 disabled={disabled}
                 onChange={(borderRadius) => patch({ borderRadius })}
               />
-              {config.trailMode === "erase" && (
-                <label className="flex items-center gap-2 cursor-pointer pt-1">
-                  <input
-                    type="checkbox"
-                    checked={config.ballColorPerBounce}
-                    disabled={disabled}
-                    onChange={(e) => patch({ ballColorPerBounce: e.target.checked })}
-                    className="rounded border-zinc-700 bg-zinc-950 text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-sm text-zinc-300">New ball color every bounce</span>
-                </label>
-              )}
             </div>
 
             <div className="space-y-3">

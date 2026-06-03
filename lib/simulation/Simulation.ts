@@ -384,6 +384,7 @@ export class Simulation {
             this.ballX,
             this.ballY,
             trailColor,
+            this.config.weaveLineWidth,
           );
         }
         this.prevBounceX = this.ballX;

@@ -174,11 +174,12 @@ export class SceneBuffer {
     toX: number,
     toY: number,
     paintColor: string,
+    lineWidth: number,
   ): void {
     const ctx = this.ctx;
     ctx.globalCompositeOperation = "source-over";
     ctx.strokeStyle = paintColor;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();

@@ -47,6 +47,7 @@ export interface StudioConfig {
   ballColorPerBounce: boolean;
   arenaColor: string;
   portraitPaddingColor: string;
+  weaveLineWidth: number;
 }
 
 export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
@@ -70,10 +71,12 @@ export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
     soundPalette: config.soundPalette ?? "pentatonic",
     transparentBackground: config.transparentBackground ?? false,
     // Paint mode uses a fixed complement ball vs trail; hue shifts break the look.
+    // Weave mode supports it for "Rainbow lines".
     ballColorPerBounce:
       config.trailMode === "paint" ? false : (config.ballColorPerBounce ?? false),
     arenaColor: config.arenaColor ?? "#ffffff",
     portraitPaddingColor: config.portraitPaddingColor ?? "#000000",
+    weaveLineWidth: clamp(config.weaveLineWidth ?? 2, 1, 20),
   };
 }
 
@@ -92,6 +95,7 @@ export const defaultStudioConfig = (): StudioConfig => {
     ballColorPerBounce: false,
     arenaColor: "#ffffff",
     portraitPaddingColor: "#000000",
+    weaveLineWidth: 2,
   });
 };
 
