@@ -218,7 +218,7 @@ export class Mp4Exporter {
     mode: Mp4ExportMode,
     compositeOnBlack: boolean,
     format: "square" | "portrait" = "square",
-    backgroundColor: string = "#ffffff"
+    backgroundColor: string = "#000000"
   ) {
     this.mode = mode;
     this.compositeOnBlack = compositeOnBlack;
@@ -238,7 +238,7 @@ export class Mp4Exporter {
     audioStream?: MediaStream,
     withAudio = false,
     format: "square" | "portrait" = "square",
-    backgroundColor: string = "#ffffff"
+    backgroundColor: string = "#000000"
   ): Promise<Mp4Exporter> {
     const exporter = new Mp4Exporter(
       "webcodecs",
