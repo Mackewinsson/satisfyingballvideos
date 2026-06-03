@@ -60,7 +60,7 @@ export class Simulation {
 
   private syncTrailColor(): void {
     this.trailColor =
-      this.config.trailMode === "paint"
+      this.config.trailMode === "paint" || this.config.trailMode === "weave"
         ? rgbCss(this.scheme.ball)
         : rgbCss(this.scheme.bg);
   }
