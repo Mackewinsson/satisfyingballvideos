@@ -453,7 +453,7 @@ export function BouncingRingCanvas({
 
     let cancelled = false;
     gifExportActiveRef.current = true;
-    const encoder = new GifStreamEncoder();
+    const encoder = new GifStreamEncoder(config.transparentBackground);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 

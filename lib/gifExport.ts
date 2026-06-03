@@ -10,14 +10,31 @@ export class GifStreamEncoder {
   private gif = GIFEncoder();
   private frameCount = 0;
 
+  constructor(private transparent: boolean = false) {}
+
   addFrame(imageData: ImageData): void {
     const rgba = imageData.data;
-    const palette = quantize(rgba, 256);
-    const index = applyPalette(rgba, palette);
+    
+    let palette;
+    let index;
+    let transparentIndex = 0;
+
+    if (this.transparent) {
+      palette = quantize(rgba, 256, { format: "rgba4444", clearAlpha: true, clearAlphaThreshold: 0, clearAlphaColor: 0 });
+      index = applyPalette(rgba, palette, "rgba4444");
+      transparentIndex = palette.findIndex(c => c.length === 4 && c[3] === 0);
+      if (transparentIndex === -1) transparentIndex = 0;
+    } else {
+      palette = quantize(rgba, 256);
+      index = applyPalette(rgba, palette);
+    }
+
     this.gif.writeFrame(index, imageData.width, imageData.height, {
       palette,
       delay: FRAME_DELAY_MS,
       dispose: 2,
+      transparent: this.transparent,
+      transparentIndex,
     });
     this.frameCount += 1;
   }
