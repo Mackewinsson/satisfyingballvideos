@@ -394,9 +394,10 @@ export class Simulation {
       } else if (this.config.trailMode === "grow") {
         this.currentRadius += this.config.growRate;
         // Check if trapped
-        if (this.currentBorderRadius - this.currentRadius <= 2) {
-          this.scene.drawMergedRing(this.currentBorderRadius, this.currentRadius, trailColor);
-          this.currentBorderRadius -= this.currentRadius;
+        const RING_THICKNESS = 4; // Matches the 4px stroke drawn in renderer
+        if (this.currentRadius >= this.currentBorderRadius - RING_THICKNESS / 2) {
+          this.scene.drawMergedRing(this.currentBorderRadius, RING_THICKNESS, trailColor);
+          this.currentBorderRadius -= RING_THICKNESS;
           
           if (this.currentBorderRadius < this.config.ringRadius * 2) {
             // Full!
