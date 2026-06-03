@@ -478,6 +478,8 @@ export class Simulation {
         this.prevBounceY = this.ballY;
       } else if (this.config.trailMode === "grow") {
         const RING_THICKNESS = this.growThickness;
+        this.currentRadius += this.config.growRate;
+        
         if (this.currentRadius >= this.currentBorderRadius - RING_THICKNESS / 2) {
           this.scene.drawMergedRing(this.currentBorderRadius, RING_THICKNESS, trailColor);
           this.currentBorderRadius -= RING_THICKNESS;
