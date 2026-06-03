@@ -259,6 +259,22 @@ export function CustomizePanel({
                 className="w-full accent-violet-500"
               />
             </label>
+            <label className="block space-y-2 pt-2 border-t border-zinc-800/50">
+              <div className="flex justify-between">
+                <span className="text-sm text-zinc-400">Ring thickness</span>
+                <span className="text-sm text-zinc-500">{config.growRingThickness}px</span>
+              </div>
+              <input
+                type="range"
+                min="2"
+                max="50"
+                step="1"
+                disabled={disabled}
+                value={config.growRingThickness}
+                onChange={(e) => patch({ growRingThickness: Number(e.target.value) })}
+                className="w-full accent-violet-500"
+              />
+            </label>
             <label className="flex items-center gap-2 cursor-pointer pt-1">
               <input
                 type="checkbox"

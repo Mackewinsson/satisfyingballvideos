@@ -259,7 +259,7 @@ export function drawBall(
   ballX: number,
   ballY: number,
   ringRadius: number,
-  opts?: { paintMode?: boolean; paintHue?: number; growMode?: boolean; growThickness?: number },
+  opts?: { paintMode?: boolean; paintHue?: number; growMode?: boolean; growRingThickness?: number },
 ): void {
   const paintDisplay =
     opts?.paintMode && opts.paintHue !== undefined
@@ -273,7 +273,7 @@ export function drawBall(
   
   if (opts?.growMode) {
     ctx.strokeStyle = rgbCss(fill);
-    ctx.lineWidth = opts.growThickness ?? 4;
+    ctx.lineWidth = opts.growRingThickness ?? 4;
     ctx.stroke();
   } else {
     ctx.fillStyle = rgbCss(fill);
@@ -314,7 +314,6 @@ export function drawScene(
     progress: number;
     frozen?: boolean;
     ballHue?: number;
-    growThickness?: number;
     confettiParticles?: Array<{
       x: number;
       y: number;
@@ -340,7 +339,6 @@ export function drawScene(
     currentRadius,
     progress,
     frozen = false,
-    growThickness,
   } = opts;
 
   const { borderRadius, targetTime } = config;
@@ -371,7 +369,7 @@ export function drawScene(
       paintMode: config.trailMode === "paint",
       paintHue: opts.ballHue ?? config.ballHue,
       growMode: config.trailMode === "grow",
-      growThickness: growThickness,
+      growRingThickness: config.growRingThickness,
     });
   }
   drawWatermark(ctx, config.watermarkText, config.watermarkOpacity);

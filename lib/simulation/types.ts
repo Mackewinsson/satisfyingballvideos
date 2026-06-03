@@ -49,6 +49,7 @@ export interface StudioConfig {
   portraitPaddingColor: string;
   weaveLineWidth: number;
   growRate: number;
+  growRingThickness: number;
 }
 
 export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
@@ -79,6 +80,7 @@ export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
     portraitPaddingColor: config.portraitPaddingColor ?? "#000000",
     weaveLineWidth: clamp(config.weaveLineWidth ?? 2, 1, 20),
     growRate: clamp(config.growRate ?? 2, 0.5, 20),
+    growRingThickness: clamp(config.growRingThickness ?? 12, 2, 50),
   };
 }
 
@@ -99,6 +101,7 @@ export const defaultStudioConfig = (): StudioConfig => {
     portraitPaddingColor: "#000000",
     weaveLineWidth: 2,
     growRate: 2,
+    growRingThickness: 12,
   });
 };
 

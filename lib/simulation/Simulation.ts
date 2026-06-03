@@ -51,7 +51,6 @@ export class Simulation {
   progress = 0;
   currentRadius = 0;
   currentBorderRadius = 0;
-  growThickness = 4;
   initialBallRadius = 0;
   isComplete = false;
 
@@ -120,14 +119,6 @@ export class Simulation {
       this.syncPrevBall();
     } else {
       this.syncTrailColor();
-    }
-    if (
-      this.config.trailMode === "grow" &&
-      (this.config.targetTime !== prev.targetTime ||
-        this.config.growRate !== prev.growRate ||
-        this.config.trailMode !== prev.trailMode)
-    ) {
-      this.growThickness = this.calculateGrowThickness();
     }
     if (!this.isComplete) {
       this.clampBallInside();
@@ -199,9 +190,6 @@ export class Simulation {
     this.isComplete = false;
     this.activeBallHue = this.config.ballHue;
     this.applyScheme();
-    if (this.config.trailMode === "grow") {
-      this.growThickness = this.calculateGrowThickness();
-    }
     this.initialBallRadius = this.config.ringRadius;
     this.currentRadius = this.initialBallRadius;
     this.currentBorderRadius = this.config.borderRadius;
@@ -238,70 +226,6 @@ export class Simulation {
     this.velY = 0;
     this.isComplete = true;
     this.spawnConfetti();
-  }
-
-  private calculateGrowThickness(): number {
-    const targetMs = targetDurationMs(this.config);
-    let low = 0.5;
-    let high = 50.0;
-    let bestT = 4.0;
-    
-    // Binary search for the best thickness
-    for (let iter = 0; iter < 15; iter++) {
-      const mid = (low + high) / 2;
-      const simTime = this.simulateFastForward(mid);
-      
-      if (simTime < targetMs) {
-        // Finished too fast -> thickness is too high
-        high = mid;
-      } else {
-        // Finished too slow -> thickness is too low
-        low = mid;
-      }
-      bestT = mid;
-    }
-    return bestT;
-  }
-
-  private simulateFastForward(thickness: number): number {
-    let bx = 400; // CENTER_X
-    let by = 400 - this.config.borderRadius * 0.5;
-    let vx = this.config.initialSpeed;
-    let vy = 0;
-    let currentR = this.config.ringRadius;
-    let borderR = this.config.borderRadius;
-    let timeMs = 0;
-    const dt = 1000 / 120; // 120Hz
-    
-    while (borderR >= this.config.ringRadius * 2) {
-      vy += this.config.gravity;
-      bx += vx;
-      by += vy;
-      
-      const resolved = resolveCircleCollision(bx, by, vx, vy, borderR, currentR, this.config.restitution);
-      bx = resolved.ballX;
-      by = resolved.ballY;
-      vx = resolved.velX;
-      vy = resolved.velY;
-      
-      if (resolved.collided && isSignificantBounce(resolved.impactSpeed)) {
-        currentR += this.config.growRate;
-        if (currentR >= borderR - thickness / 2) {
-          borderR -= thickness;
-          if (borderR < this.config.ringRadius * 2) {
-            break;
-          }
-          currentR = this.config.ringRadius;
-          bx = 400;
-          by = 400;
-          vx = 2.5;
-          vy = 0;
-        }
-      }
-      timeMs += dt;
-      if (timeMs > 120000) break; // cap at 120s to avoid infinite loop
-    }
-    return timeMs;
   }
 
   private finalizeTrail(): void {
@@ -477,10 +401,14 @@ export class Simulation {
         this.prevBounceX = this.ballX;
         this.prevBounceY = this.ballY;
       } else if (this.config.trailMode === "grow") {
-        const RING_THICKNESS = this.growThickness;
-        this.currentRadius += this.config.growRate;
-        
-        if (this.currentRadius >= this.currentBorderRadius - RING_THICKNESS / 2) {
+        const RING_THICKNESS = this.config.growRingThickness;
+        const trapRadius = this.currentBorderRadius - RING_THICKNESS / 2;
+        this.currentRadius = Math.min(
+          this.currentRadius + this.config.growRate,
+          trapRadius,
+        );
+
+        if (this.currentRadius >= trapRadius) {
           this.scene.drawMergedRing(this.currentBorderRadius, RING_THICKNESS, trailColor);
           this.currentBorderRadius -= RING_THICKNESS;
 
@@ -555,7 +483,6 @@ export class Simulation {
       progress: this.progress,
       frozen: this.isComplete,
       ballHue: this.activeBallHue,
-      growThickness: this.growThickness,
       confettiParticles: this.confettiParticles,
     });
   }
