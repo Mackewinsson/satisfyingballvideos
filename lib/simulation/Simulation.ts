@@ -39,6 +39,8 @@ export class Simulation {
   velX = 0;
   velY = 0;
   bounceCount = 0;
+  prevBounceX: number | null = null;
+  prevBounceY: number | null = null;
   elapsed = 0;
   clearPct = 0;
   displaySpeed = 0;
@@ -179,6 +181,8 @@ export class Simulation {
     this.velX = drop.velX;
     this.velY = drop.velY;
     this.bounceCount = 0;
+    this.prevBounceX = null;
+    this.prevBounceY = null;
     this.elapsed = 0;
     this.clearPct = 0;
     this.clearTimer = 0;
@@ -340,7 +344,7 @@ export class Simulation {
         brushR,
         trailColor,
       );
-    } else {
+    } else if (this.config.trailMode === "erase") {
       this.scene.drawEraseTrail(
         prevX,
         prevY,
@@ -362,7 +366,7 @@ export class Simulation {
           brushR,
           trailColor,
         );
-      } else {
+      } else if (this.config.trailMode === "erase") {
         this.scene.drawWallGapErase(
           this.ballX,
           this.ballY,
@@ -372,6 +376,18 @@ export class Simulation {
           trailColor,
           transparent,
         );
+      } else if (this.config.trailMode === "weave") {
+        if (this.prevBounceX !== null && this.prevBounceY !== null) {
+          this.scene.drawWeaveLine(
+            this.prevBounceX,
+            this.prevBounceY,
+            this.ballX,
+            this.ballY,
+            trailColor,
+          );
+        }
+        this.prevBounceX = this.ballX;
+        this.prevBounceY = this.ballY;
       }
       this.bounceCount += 1;
       this.shiftBallColorOnBounce();

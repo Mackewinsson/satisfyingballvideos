@@ -167,6 +167,26 @@ export class SceneBuffer {
     ctx.stroke();
   }
 
+  /** Draw a straight line for the weaver mode. */
+  drawWeaveLine(
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number,
+    paintColor: string,
+  ): void {
+    const ctx = this.ctx;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = paintColor;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.stroke();
+  }
+
   /** Stamp a circular paint dab (used at wall contact). */
   drawPaintDisc(x: number, y: number, brushRadius: number, paintColor: string): void {
     if (brushRadius <= 0) return;
@@ -446,6 +466,8 @@ export function estimateTrailProgress(
   trailMode: TrailMode,
   arenaColor = "#ffffff",
 ): number {
+  if (trailMode === "weave") return 0;
+
   const scale = 6;
   const sw = Math.floor(WIDTH / scale);
   const sh = Math.floor(HEIGHT / scale);
