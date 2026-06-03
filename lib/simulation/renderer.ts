@@ -359,10 +359,18 @@ export function drawScene(
   }
 
   ctx.strokeStyle = rgbCss(scheme.borderLine);
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(CENTER_X, CENTER_Y, borderRadius, 0, Math.PI * 2);
-  ctx.stroke();
+  
+  if (config.trailMode === "grow") {
+    ctx.lineWidth = config.growRingThickness;
+    ctx.beginPath();
+    ctx.arc(CENTER_X, CENTER_Y, borderRadius + config.growRingThickness / 2, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(CENTER_X, CENTER_Y, borderRadius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   if (!frozen) {
     drawBall(ctx, scheme, ballX, ballY, currentRadius, {
