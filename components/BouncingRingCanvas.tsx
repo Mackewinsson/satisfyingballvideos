@@ -718,8 +718,8 @@ export function BouncingRingCanvas({
     <div className="flex flex-col items-center gap-3">
       {/* Canvas wrapper — overlay during any export */}
       <div
-        className="relative"
-        style={{ width: "min(100%, 800px)", aspectRatio: "1" }}
+        className="relative mx-auto"
+        style={{ width: "100%", maxWidth: "min(800px, calc(100vh - 260px))", aspectRatio: "1" }}
       >
         <canvas
           ref={canvasRef}
