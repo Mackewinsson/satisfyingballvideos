@@ -46,6 +46,7 @@ export interface StudioConfig {
   /** Shift ball hue on every wall bounce. */
   ballColorPerBounce: boolean;
   arenaColor: string;
+  portraitPaddingColor: string;
 }
 
 export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
@@ -72,6 +73,7 @@ export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
     ballColorPerBounce:
       config.trailMode === "paint" ? false : (config.ballColorPerBounce ?? false),
     arenaColor: config.arenaColor ?? "#ffffff",
+    portraitPaddingColor: config.portraitPaddingColor ?? "#000000",
   };
 }
 
@@ -89,6 +91,7 @@ export const defaultStudioConfig = (): StudioConfig => {
     transparentBackground: false,
     ballColorPerBounce: false,
     arenaColor: "#ffffff",
+    portraitPaddingColor: "#000000",
   });
 };
 

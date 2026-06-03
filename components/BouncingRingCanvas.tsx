@@ -106,6 +106,7 @@ type Props = {
   config: StudioConfig;
   generating: boolean;
   exportType: "gif" | "zip" | "webm" | "mp4";
+  exportFormat?: "square" | "portrait";
   onGeneratingChange: (v: boolean) => void;
   onRecordingComplete: (result: GifExportResult) => void;
   onZipComplete: (blob: Blob) => void;
@@ -120,6 +121,7 @@ export function BouncingRingCanvas({
   config,
   generating,
   exportType,
+  exportFormat = "square",
   onGeneratingChange,
   onRecordingComplete,
   onZipComplete,
@@ -556,6 +558,8 @@ export function BouncingRingCanvas({
           config.transparentBackground,
           audioStream,
           wantsAudio,
+          exportFormat,
+          config.portraitPaddingColor
         );
       } catch (e) {
         reportProgress(e instanceof Error ? e.message : "MP4 export unavailable.");

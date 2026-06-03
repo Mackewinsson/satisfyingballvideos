@@ -210,19 +210,24 @@ export class Mp4Exporter {
   private recordedChunks: Blob[] = [];
   private stream: MediaStream | null = null;
   private mimeType = "video/mp4";
+  private format: "square" | "portrait";
+  private backgroundColor: string;
   readonly fps: number = MP4_FPS;
 
   private constructor(
     mode: Mp4ExportMode,
     compositeOnBlack: boolean,
-    width: number,
-    height: number,
+    format: "square" | "portrait" = "square",
+    backgroundColor: string = "#ffffff"
   ) {
     this.mode = mode;
     this.compositeOnBlack = compositeOnBlack;
+    this.format = format;
+    this.backgroundColor = backgroundColor;
     this.exportCanvas = document.createElement("canvas");
-    this.exportCanvas.width = width;
-    this.exportCanvas.height = height;
+    this.exportCanvas.width = 800;
+    this.exportCanvas.height = format === "portrait" ? 1422 : 800;
+    this.format = format;
     const ctx = this.exportCanvas.getContext("2d");
     if (!ctx) throw new Error("Could not create MP4 export canvas");
     this.exportCtx = ctx;
@@ -232,15 +237,17 @@ export class Mp4Exporter {
     compositeOnBlack: boolean,
     audioStream?: MediaStream,
     withAudio = false,
+    format: "square" | "portrait" = "square",
+    backgroundColor: string = "#ffffff"
   ): Promise<Mp4Exporter> {
     const exporter = new Mp4Exporter(
       "webcodecs",
       compositeOnBlack,
-      WIDTH,
-      HEIGHT,
+      format,
+      backgroundColor
     );
 
-    if (await isWebCodecsH264Supported(WIDTH, HEIGHT)) {
+    if (await isWebCodecsH264Supported(800, format === "portrait" ? 1422 : 800)) {
       exporter.initWebCodecs(withAudio);
       return exporter;
     }
@@ -257,9 +264,11 @@ export class Mp4Exporter {
   }
 
   private initWebCodecs(withAudio: boolean): void {
+    const width = 800;
+    const height = this.format === "portrait" ? 1422 : 800;
     this.muxer = new Muxer({
       target: new ArrayBufferTarget(),
-      video: { codec: "avc", width: WIDTH, height: HEIGHT },
+      video: { codec: "avc", width, height },
       ...(withAudio
         ? {
             audio: {
@@ -279,8 +288,8 @@ export class Mp4Exporter {
 
     this.videoEncoder.configure({
       codec: H264_CODEC,
-      width: WIDTH,
-      height: HEIGHT,
+      width,
+      height,
       bitrate: MP4_BITRATE,
       framerate: MP4_FPS,
     });
@@ -300,14 +309,27 @@ export class Mp4Exporter {
     this.mediaRecorder.start();
   }
 
-  addFrame(imageData: ImageData): void {
-    if (this.compositeOnBlack) {
-      this.exportCtx.fillStyle = "#000000";
-      this.exportCtx.fillRect(0, 0, WIDTH, HEIGHT);
+  addFrame(frameData: ImageData): void {
+    if (this.format === "portrait") {
+      this.exportCtx.fillStyle = this.compositeOnBlack ? "#000000" : this.backgroundColor;
+      this.exportCtx.fillRect(0, 0, 800, 1422);
+      const offsetY = Math.floor((1422 - 800) / 2);
+      
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = 800;
+      tempCanvas.height = 800;
+      tempCanvas.getContext("2d")!.putImageData(frameData, 0, 0);
+      
+      this.exportCtx.drawImage(tempCanvas, 0, offsetY);
     } else {
-      this.exportCtx.clearRect(0, 0, WIDTH, HEIGHT);
+      if (this.compositeOnBlack) {
+        this.exportCtx.fillStyle = "#000000";
+        this.exportCtx.fillRect(0, 0, 800, 800);
+      } else {
+        this.exportCtx.clearRect(0, 0, 800, 800);
+      }
+      this.exportCtx.putImageData(frameData, 0, 0);
     }
-    this.exportCtx.putImageData(imageData, 0, 0);
 
     if (this.mode === "webcodecs" && this.videoEncoder) {
       const durationUs = Math.round(1_000_000 / MP4_FPS);

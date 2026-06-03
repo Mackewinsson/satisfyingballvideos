@@ -273,6 +273,21 @@ export function CustomizePanel({
                     : "Erase the arena to transparency instead of the arena background color."}
                 </span>
               </label>
+
+              <div className="flex items-center justify-between pt-2">
+                <label className="text-sm text-zinc-400">Portrait padding color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    disabled={disabled}
+                    value={config.portraitPaddingColor}
+                    onChange={(e) => {
+                      patch({ portraitPaddingColor: e.target.value });
+                    }}
+                    className="h-8 w-12 cursor-pointer rounded border border-zinc-600 bg-transparent"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-3">

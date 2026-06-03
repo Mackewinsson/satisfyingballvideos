@@ -52,6 +52,8 @@ export function StudioClient({
     () => typeof window !== "undefined" && isWebMTransparentSupported(),
   );
   const [mp4Supported, setMp4Supported] = useState(false);
+  const [mp4ModalOpen, setMp4ModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"square" | "portrait">("square");
 
   const renderId = useMemo(() => computeRenderId(config), [config]);
 
@@ -142,10 +144,10 @@ export function StudioClient({
     );
   };
 
-  const handleGenerate = () => {
-    if (generating) return;
+  const startGeneration = (format?: "square" | "portrait") => {
+    if (format) setExportFormat(format);
+    setMp4ModalOpen(false);
     
-    // Clear old exports
     setGifExport(null);
     setZipExport(null);
     setWebMExport(null);
@@ -153,6 +155,16 @@ export function StudioClient({
     
     setStatus(`Recording ${config.targetTime}s…`);
     setGenerating(true);
+  };
+
+  const handleGenerate = () => {
+    if (generating) return;
+    
+    if (exportType === "mp4") {
+      setMp4ModalOpen(true);
+    } else {
+      startGeneration();
+    }
   };
 
   const handleRecordingComplete = useCallback((result: GifExportResult) => {
@@ -275,6 +287,7 @@ export function StudioClient({
             config={config}
             generating={generating}
             exportType={exportType}
+            exportFormat={exportFormat}
             onReset={handleResetAll}
             onGeneratingChange={setGenerating}
             onRecordingComplete={handleRecordingComplete}
@@ -431,6 +444,48 @@ export function StudioClient({
           )}
         </div>
       </div>
+
+
+      {mp4ModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl">
+            <h2 className="mb-2 text-xl font-bold text-white">Choose Video Size</h2>
+            <p className="mb-6 text-sm text-zinc-400">
+              Select the aspect ratio for your MP4 export. The physics will remain exactly the same.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => startGeneration("square")}
+                className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 hover:border-violet-500 hover:bg-violet-950/30 transition-colors text-left"
+              >
+                <div>
+                  <div className="font-semibold text-white">Square (1:1)</div>
+                  <div className="text-xs text-zinc-500 mt-1">800x800 • Instagram/Classic</div>
+                </div>
+                <div className="h-8 w-8 border-2 border-zinc-700 rounded-sm" />
+              </button>
+              
+              <button
+                onClick={() => startGeneration("portrait")}
+                className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 hover:border-violet-500 hover:bg-violet-950/30 transition-colors text-left"
+              >
+                <div>
+                  <div className="font-semibold text-white">Portrait (9:16)</div>
+                  <div className="text-xs text-zinc-500 mt-1">800x1422 • TikTok/Shorts</div>
+                </div>
+                <div className="h-10 w-6 border-2 border-zinc-700 rounded-sm" />
+              </button>
+            </div>
+            
+            <button
+              onClick={() => setMp4ModalOpen(false)}
+              className="mt-6 w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-zinc-400 hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <PayModal
         open={payOpen}
