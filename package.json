@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.2",
+    "@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
     "gifenc": "^1.0.3",
     "jszip": "^3.10.1",
     "mp4-muxer": "^5.2.2",

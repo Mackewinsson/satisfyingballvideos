@@ -232,13 +232,30 @@ export function StudioClient({
     setPayLoading(true);
     setPayError(null);
     const res = await requestUnlock(renderId, undefined, userId);
-    setPayLoading(false);
+    
     if (res.unlocked) {
+      setPayLoading(false);
       setPayOpen(false);
       runDownload();
       return;
     }
-    setPayError(res.message ?? "Payment required.");
+
+    try {
+      const checkoutRes = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ renderId }),
+      });
+      const checkoutData = await checkoutRes.json();
+      if (checkoutRes.ok && checkoutData.checkoutUrl) {
+        window.location.href = checkoutData.checkoutUrl;
+        return;
+      }
+      setPayError(checkoutData.message ?? "Payment checkout unavailable.");
+    } catch (error) {
+      setPayError("An error occurred. Please try again.");
+    }
+    setPayLoading(false);
   };
 
   const hasGeneratedFile = useMemo(() => {

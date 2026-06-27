@@ -46,15 +46,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ unlocked: true, token: randomUUID() });
   }
 
-  if (sessionId) {
-    // TODO: Stripe Checkout session verification scoped to userId
-    return NextResponse.json(
-      {
-        message:
-          "Stripe not configured. Set PAYWALL_BYPASS=true for local dev.",
-      },
-      { status: 402 },
-    );
+  const { clerkClient } = await import("@clerk/nextjs/server");
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const unlockedRenders = (user.privateMetadata?.unlockedRenders as string[]) || [];
+
+  if (unlockedRenders.includes(renderId)) {
+    return NextResponse.json({ unlocked: true, token: randomUUID() });
   }
 
   return NextResponse.json(

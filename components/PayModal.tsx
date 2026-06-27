@@ -19,12 +19,10 @@ export function PayModal({ open, onClose, onUnlock, loading, error }: Props) {
         className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-xl"
       >
         <h2 id="pay-title" className="text-xl font-semibold text-white">
-          Unlock your GIF
+          Unlock your Export
         </h2>
         <p className="mt-2 text-sm text-zinc-400">
-          One-time download for your custom animation. Payment provider
-          (Stripe) plugs in here — MVP uses dev unlock when{" "}
-          <code className="text-violet-300">PAYWALL_BYPASS=true</code>.
+          One-time payment for your custom animation. You will be redirected to Lemon Squeezy to complete the purchase securely.
         </p>
         <p className="mt-4 text-2xl font-bold text-white">
           $4.99{" "}
@@ -50,7 +48,7 @@ export function PayModal({ open, onClose, onUnlock, loading, error }: Props) {
             disabled={loading}
             className="flex-1 rounded-lg bg-violet-600 py-2.5 font-medium text-white hover:bg-violet-500 disabled:opacity-50"
           >
-            {loading ? "Unlocking…" : "Continue"}
+            {loading ? "Redirecting…" : "Continue to Payment"}
           </button>
         </div>
       </div>
