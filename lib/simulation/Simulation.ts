@@ -340,6 +340,33 @@ export class Simulation {
     this.ballY = resolved.ballY;
     this.velX = resolved.velX;
     this.velY = resolved.velY;
+
+    // Minimum Energy Injection
+    if (this.progress < 1.0 && gravity > 0) {
+      const h = (CENTER_Y + this.currentBorderRadius - ballR) - this.ballY;
+      const pe = gravity * Math.max(0, h);
+      const ke = 0.5 * (this.velX * this.velX + this.velY * this.velY);
+      const totalEnergy = pe + ke;
+      
+      const MIN_ENERGY = 40.0;
+      const BOOST_ENERGY = 150.0;
+      
+      if (totalEnergy < MIN_ENERGY) {
+        const targetKe = BOOST_ENERGY - pe;
+        if (targetKe > 0) {
+          if (ke > 0.1) {
+            const factor = Math.sqrt(targetKe / ke);
+            this.velX *= factor;
+            this.velY *= factor;
+          } else {
+            const speed = Math.sqrt(2 * targetKe);
+            this.velX = (Math.random() > 0.5 ? 1 : -1) * (speed * 0.5);
+            this.velY = -speed * 0.866;
+          }
+        }
+      }
+    }
+
     this.displaySpeed = Math.hypot(this.velX, this.velY);
 
     const brushR = this.getBrushRadius();
