@@ -207,6 +207,7 @@ export function CustomizePanel({
             <option value="paint">Paint strokes</option>
             <option value="weave">Weave string art</option>
             <option value="grow">Growing Ring (Matryoshka)</option>
+            <option value="consume">Consume (Time attack)</option>
           </select>
         </label>
         
@@ -291,6 +292,12 @@ export function CustomizePanel({
         {config.trailMode === "paint" && (
           <p className="text-xs text-zinc-500 pt-2 border-t border-zinc-800/50">
             Ball paints colored strokes. Transparent background is recommended (enable in Advanced options).
+          </p>
+        )}
+
+        {config.trailMode === "consume" && (
+          <p className="text-xs text-zinc-500 pt-2 border-t border-zinc-800/50">
+            Ball dynamic speed physics activates to perfectly paint the arena by the target time.
           </p>
         )}
         
@@ -447,7 +454,7 @@ export function CustomizePanel({
                 onChange={(restitution) => patch({ restitution })}
               />
               <RangeField
-                label={config.trailMode === "paint" ? "Brush width" : "Eraser width"}
+                label={config.trailMode === "paint" || config.trailMode === "consume" ? "Brush width" : "Eraser width"}
                 value={config.eraserStart}
                 min={4}
                 max={60}

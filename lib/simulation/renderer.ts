@@ -26,7 +26,7 @@ export class SceneBuffer {
     ctx.globalCompositeOperation = "source-over";
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-    if (trailMode === "paint") {
+    if (trailMode === "paint" || trailMode === "consume") {
       if (!transparent) {
         ctx.fillStyle = rgbCss(scheme.bg);
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -374,7 +374,7 @@ export function drawScene(
 
   if (!frozen) {
     drawBall(ctx, scheme, ballX, ballY, currentRadius, {
-      paintMode: config.trailMode === "paint",
+      paintMode: config.trailMode === "paint" || config.trailMode === "consume",
       paintHue: opts.ballHue ?? config.ballHue,
       growMode: config.trailMode === "grow",
       growRingThickness: config.growRingThickness,
@@ -415,7 +415,7 @@ export function drawScene(
   ctx.font = "bold 16px monospace";
   ctx.fillStyle = "rgb(100,180,255)";
   ctx.fillText(
-    `${config.trailMode === "paint" ? "PAINTED" : "CLEARED"}: ${(clearPct * 100).toFixed(1)}%`,
+    `${config.trailMode === "paint" || config.trailMode === "consume" ? "PAINTED" : "CLEARED"}: ${(clearPct * 100).toFixed(1)}%`,
     15,
     HEIGHT - 22,
   );
@@ -542,7 +542,7 @@ export function estimateTrailProgress(
 
         let isCovered = false;
         if (transparent) {
-          isCovered = trailMode === "paint" ? a > 64 : a < 192;
+          isCovered = (trailMode === "paint" || trailMode === "consume") ? a > 64 : a < 192;
         } else {
           const distSq = (r - ar) ** 2 + (g - ag) ** 2 + (b - ab) ** 2;
           isCovered = distSq > 1000;

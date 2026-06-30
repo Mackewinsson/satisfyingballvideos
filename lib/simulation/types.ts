@@ -25,7 +25,7 @@ export function buildPhysicsDefaults() {
   };
 }
 
-export type TrailMode = "erase" | "paint" | "weave" | "grow";
+export type TrailMode = "erase" | "paint" | "weave" | "grow" | "consume";
 
 export interface StudioConfig {
   watermarkText: string;
@@ -68,7 +68,7 @@ export function normalizeStudioConfig(config: StudioConfig): StudioConfig {
     eraserStart,
     watermarkOpacity: clamp(config.watermarkOpacity, 0.05, 0.8),
     ballHue: ((config.ballHue % 1) + 1) % 1,
-    trailMode: ["paint", "weave", "grow"].includes(config.trailMode) ? config.trailMode : "erase",
+    trailMode: ["paint", "weave", "grow", "consume"].includes(config.trailMode) ? config.trailMode : "erase",
     soundEnabled: config.soundEnabled ?? true,
     soundPalette: config.soundPalette ?? "pentatonic",
     transparentBackground: config.transparentBackground ?? false,

@@ -61,7 +61,7 @@ export class Simulation {
 
   private syncTrailColor(): void {
     this.trailColor =
-      this.config.trailMode === "paint" || this.config.trailMode === "weave" || this.config.trailMode === "grow"
+      this.config.trailMode === "paint" || this.config.trailMode === "weave" || this.config.trailMode === "grow" || this.config.trailMode === "consume"
         ? rgbCss(this.scheme.ball)
         : rgbCss(this.scheme.bg);
   }
@@ -236,7 +236,7 @@ export class Simulation {
       this.markSimulationComplete();
       return;
     }
-    if (trailMode === "paint") {
+    if (trailMode === "paint" || trailMode === "consume") {
       this.scene.fillArenaPainted(this.trailColor, borderRadius, transparentBackground);
     } else {
       this.scene.fillArenaErased(this.trailColor, borderRadius, transparentBackground);
@@ -297,6 +297,11 @@ export class Simulation {
   }
 
   getBrushRadius(): number {
+    if (this.config.trailMode === "consume" && this.progress > 0.95) {
+      // In the last 5%, rapidly expand the invisible brush to ensure full consumption
+      const finishProgress = (this.progress - 0.95) / 0.05; // 0 to 1
+      return this.config.eraserStart + (this.config.borderRadius * finishProgress);
+    }
     return this.config.eraserStart;
   }
 
@@ -317,8 +322,37 @@ export class Simulation {
     const { borderRadius, gravity, restitution } = this.config;
     const ballR = this.currentRadius;
 
+    let activeGravity = gravity;
+    let activeRestitution = restitution;
+
+    if (this.config.trailMode === "consume") {
+      activeGravity = 0;
+      activeRestitution = 1;
+      
+      const currentSpeed = Math.hypot(this.velX, this.velY);
+      const expectedClear = Math.pow(this.progress, 0.8);
+      const deficit = expectedClear - this.clearPct;
+      
+      let targetSpeed = this.config.initialSpeed * 1.5;
+      if (deficit > 0) {
+        targetSpeed += deficit * 150;
+      } else {
+        targetSpeed = Math.max(5, targetSpeed + deficit * 20);
+      }
+      
+      if (currentSpeed > 0.001) {
+        const factor = targetSpeed / currentSpeed;
+        const smoothFactor = 1.0 + (factor - 1.0) * 0.1;
+        this.velX *= smoothFactor;
+        this.velY *= smoothFactor;
+      } else {
+        this.velX = targetSpeed;
+        this.velY = 0;
+      }
+    }
+
     // 1. Gravity
-    this.velY += gravity;
+    this.velY += activeGravity;
 
     // 2. Move
     const prevX = this.ballX;
@@ -334,7 +368,7 @@ export class Simulation {
       this.velY,
       this.currentBorderRadius,
       ballR,
-      restitution,
+      activeRestitution,
     );
     this.ballX = resolved.ballX;
     this.ballY = resolved.ballY;
@@ -342,9 +376,9 @@ export class Simulation {
     this.velY = resolved.velY;
 
     // Minimum Energy Injection
-    if (this.progress < 1.0 && gravity > 0) {
+    if (this.progress < 1.0 && activeGravity > 0) {
       const h = (CENTER_Y + this.currentBorderRadius - ballR) - this.ballY;
-      const pe = gravity * Math.max(0, h);
+      const pe = activeGravity * Math.max(0, h);
       const ke = 0.5 * (this.velX * this.velX + this.velY * this.velY);
       const totalEnergy = pe + ke;
       
@@ -373,7 +407,7 @@ export class Simulation {
     const transparent = this.config.transparentBackground;
     const trailColor = this.trailColor;
 
-    if (this.config.trailMode === "paint") {
+    if (this.config.trailMode === "paint" || this.config.trailMode === "consume") {
       this.scene.drawPaintTrail(
         prevX,
         prevY,
@@ -395,7 +429,7 @@ export class Simulation {
     }
 
     if (resolved.collided && isSignificantBounce(resolved.impactSpeed)) {
-      if (this.config.trailMode === "paint") {
+      if (this.config.trailMode === "paint" || this.config.trailMode === "consume") {
         this.scene.drawWallGapPaint(
           this.ballX,
           this.ballY,
@@ -472,7 +506,8 @@ export class Simulation {
       );
     } else {
       this.clearTimer += dtMs;
-      if (this.clearTimer > 1500) {
+      const clearInterval = this.config.trailMode === "consume" ? 200 : 1500;
+      if (this.clearTimer > clearInterval) {
         this.clearPct = estimateTrailProgress(
           this.scene,
           borderRadius,
